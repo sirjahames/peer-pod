@@ -241,7 +241,7 @@ export function computeProjectCompatibility(profile: FreelancerProfile, project:
     const skills = profile.skills || [];
     const requiredSkills = project.requiredSkills || [];
     const hoursPerWeek = profile.availability?.hoursPerWeek || 20;
-    
+
     const skillScore = computeSkillScore(skills, requiredSkills);
     const availScore = computeAvailabilityScore(hoursPerWeek);
 
@@ -279,7 +279,7 @@ export function computeProjectCompatibility(profile: FreelancerProfile, project:
     const neutralPersonality = Array(personalityLength).fill(3);
     const personalityScore = computePersonalityScore(
         personality.length > 0 ? personality : neutralPersonality,
-        neutralPersonality
+        neutralPersonality,
     );
 
     const total =
@@ -360,15 +360,15 @@ export function computeFreelancerCompatibility(
     // Legacy fallback with safe defaults
     const personality1 = profile1.personality || [];
     const personality2 = profile2.personality || [];
-    
+
     // If both personalities are empty, return default score
     if (personality1.length === 0 && personality2.length === 0) {
         return 50;
     }
-    
+
     const personalityScore = computePersonalityScore(
         personality1.length > 0 ? personality1 : Array(9).fill(3),
-        personality2.length > 0 ? personality2 : Array(9).fill(3)
+        personality2.length > 0 ? personality2 : Array(9).fill(3),
     );
 
     // Skill complementarity with safe defaults
