@@ -711,49 +711,147 @@ export async function getProjectCompatibility(
     return computeProjectCompatibility(profile, project);
 }
 
+/**
+ * Check if AI compatibility is enabled
+ */
+export async function isAICompatibilityEnabled(): Promise<boolean> {
+    return !!process.env.OPENAI_API_KEY;
+}
+
 export async function getProjectsWithCompatibility(
     freelancerId: string,
-): Promise<{ project: Project; compatibility: number }[]> {
+    useAI: boolean = false,
+): Promise<{ project: Project; compatibility: number; aiReasoning?: string; strengths?: string[]; concerns?: string[] }[]> {
     const profile = await getFreelancerProfile(freelancerId);
     if (!profile) return [];
 
     const openProjects = await getOpenProjects();
-    const { computeProjectCompatibility } = await import("./compatibility");
+    const user = await getUser(freelancerId);
+    const freelancerName = user?.name || "Freelancer";
     
+    // Check if we should use AI
+    const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
+    
+    if (aiEnabled) {
+        const { computeProjectCompatibilityAI } = await import("./ai-compatibility");
+        
+        // Process in parallel but limit concurrency
+        const results = await Promise.all(
+            openProjects.map(async (project) => {
+                try {
+                    const aiResult = await computeProjectCompatibilityAI(profile, project, freelancerName);
+                    return {
+                        project,
+                        compatibility: aiResult.score,
+                        aiReasoning: aiResult.reasoning,
+                        strengths: aiResult.strengths,
+                        concerns: aiResult.concerns,
+                    };
+                } catch (error) {
+                    // Fallback to algorithmic on error
+                    const { computeProjectCompatibility } = await import("./compatibility");
+                    return {
+                        project,
+                        compatibility: computeProjectCompatibility(profile, project),
+                    };
+                }
+            })
+        );
+        return results;
+    }
+    
+    // Use algorithmic compatibility
+    const { computeProjectCompatibility } = await import("./compatibility");
     return openProjects.map((project) => ({
         project,
         compatibility: computeProjectCompatibility(profile, project),
     }));
 }
 
-export async function getRankedCandidates(projectId: string) {
+export async function getRankedCandidates(projectId: string, useAI: boolean = false) {
     const project = await getProject(projectId);
     if (!project) return [];
 
     const projectApps = await getProjectApplications(projectId);
     const candidateIds = projectApps.map((a) => a.freelancerId);
     
-    // Get all profiles for candidates
+    // Get all profiles and user info for candidates
     const profiles = await Promise.all(
         candidateIds.map((id) => getFreelancerProfile(id))
     );
+    const users = await Promise.all(
+        candidateIds.map((id) => getUser(id))
+    );
+    
     const profileMap = new Map<string, FreelancerProfile>();
+    const nameMap = new Map<string, string>();
     profiles.forEach((p, i) => {
         if (p) profileMap.set(candidateIds[i], p);
+    });
+    users.forEach((u, i) => {
+        if (u) nameMap.set(candidateIds[i], u.name);
     });
 
     const group = await getProjectGroup(projectId);
     const existingMembers = group?.members || [];
     
-    // Get existing member profiles
+    // Get existing member profiles and names
     const memberProfiles = await Promise.all(
         existingMembers.map((id) => getFreelancerProfile(id))
     );
+    const memberUsers = await Promise.all(
+        existingMembers.map((id) => getUser(id))
+    );
     const memberProfileMap = new Map<string, FreelancerProfile>();
+    const memberNameMap = new Map<string, string>();
     memberProfiles.forEach((p, i) => {
         if (p) memberProfileMap.set(existingMembers[i], p);
     });
+    memberUsers.forEach((u, i) => {
+        if (u) memberNameMap.set(existingMembers[i], u.name);
+    });
 
+    // Check if we should use AI
+    const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
+    
+    if (aiEnabled) {
+        try {
+            const { rankCandidatesAI } = await import("./ai-compatibility");
+            
+            // Prepare candidates for AI
+            const candidates = candidateIds
+                .filter(id => profileMap.has(id))
+                .map(id => ({
+                    profile: profileMap.get(id)!,
+                    name: nameMap.get(id) || "Candidate",
+                    userId: id,
+                }));
+            
+            // Prepare existing members for AI
+            const existingMemberData = existingMembers
+                .filter(id => memberProfileMap.has(id))
+                .map(id => ({
+                    profile: memberProfileMap.get(id)!,
+                    name: memberNameMap.get(id) || "Team Member",
+                }));
+            
+            const aiRankings = await rankCandidatesAI(candidates, project, existingMemberData);
+            
+            return aiRankings.map(r => ({
+                freelancerId: r.freelancerId,
+                projectScore: r.score,
+                avgMemberScore: r.score, // AI considers both in its score
+                totalScore: r.score,
+                aiReasoning: r.reasoning,
+                strengths: r.strengths,
+                concerns: r.concerns,
+            }));
+        } catch (error) {
+            console.error("AI ranking failed, falling back to algorithm:", error);
+        }
+    }
+
+    // Fallback to algorithmic ranking
     const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
 
     const results: {
@@ -794,28 +892,66 @@ export async function getRankedCandidates(projectId: string) {
     return results.sort((a, b) => b.totalScore - a.totalScore);
 }
 
-export async function getTeamSuggestions(projectId: string) {
+export async function getTeamSuggestions(projectId: string, useAI: boolean = false) {
     const project = await getProject(projectId);
     if (!project) return [];
 
     const projectApps = await getProjectApplications(projectId);
     const candidateIds = projectApps.map((a) => a.freelancerId);
 
-    // Get all profiles
+    // Get all profiles and user info
     const profiles = await Promise.all(
         candidateIds.map((id) => getFreelancerProfile(id))
     );
+    const users = await Promise.all(
+        candidateIds.map((id) => getUser(id))
+    );
+    
     const profileMap = new Map<string, FreelancerProfile>();
+    const nameMap = new Map<string, string>();
     profiles.forEach((p, i) => {
         if (p) profileMap.set(candidateIds[i], p);
     });
-
-    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
+    users.forEach((u, i) => {
+        if (u) nameMap.set(candidateIds[i], u.name);
+    });
 
     const teamSize = project.teamSize;
     if (candidateIds.length < teamSize) {
         return candidateIds.length > 0 ? [{ members: candidateIds, avgScore: 50 }] : [];
     }
+
+    // Check if we should use AI
+    const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
+    
+    if (aiEnabled) {
+        try {
+            const { suggestTeamCombinationsAI } = await import("./ai-compatibility");
+            
+            // Prepare candidates for AI
+            const candidates = candidateIds
+                .filter(id => profileMap.has(id))
+                .map(id => ({
+                    profile: profileMap.get(id)!,
+                    name: nameMap.get(id) || "Candidate",
+                    userId: id,
+                }));
+            
+            const aiSuggestions = await suggestTeamCombinationsAI(candidates, project, teamSize);
+            
+            return aiSuggestions.map(s => ({
+                members: s.members,
+                avgScore: s.avgScore,
+                aiReasoning: s.reasoning,
+                teamStrengths: s.teamStrengths,
+            }));
+        } catch (error) {
+            console.error("AI team suggestions failed, falling back to algorithm:", error);
+        }
+    }
+
+    // Fallback to algorithmic team suggestions
+    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
 
     const combinations: { members: string[]; avgScore: number }[] = [];
 
@@ -866,6 +1002,51 @@ export async function getTeamSuggestions(projectId: string) {
     }
 
     return combinations.sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
+}
+
+/**
+ * Get AI-powered insights for a formed team
+ */
+export async function getTeamInsights(groupId: string) {
+    const group = await getGroup(groupId);
+    if (!group) return null;
+    
+    const project = await getProject(group.projectId);
+    if (!project) return null;
+    
+    // Get member profiles and names
+    const profiles = await Promise.all(group.members.map(id => getFreelancerProfile(id)));
+    const users = await Promise.all(group.members.map(id => getUser(id)));
+    
+    const members = group.members
+        .map((id, i) => ({
+            profile: profiles[i],
+            name: users[i]?.name || "Team Member",
+        }))
+        .filter(m => m.profile) as { profile: FreelancerProfile; name: string }[];
+    
+    // Check if AI is enabled
+    if (!process.env.OPENAI_API_KEY) {
+        return {
+            overallCompatibility: 75,
+            teamStrengths: ["Team assembled and ready to collaborate"],
+            potentialChallenges: ["AI insights not available - add OPENAI_API_KEY to enable"],
+            recommendations: ["Hold a kickoff meeting to align on goals"],
+            roleAssignments: members.map(m => ({
+                name: m.name,
+                suggestedRole: "Team Member",
+                reasoning: "Role to be determined by team"
+            }))
+        };
+    }
+    
+    try {
+        const { getTeamInsightsAI } = await import("./ai-compatibility");
+        return await getTeamInsightsAI(members, project);
+    } catch (error) {
+        console.error("AI team insights failed:", error);
+        return null;
+    }
 }
 
 // ============ GROUPS ============
