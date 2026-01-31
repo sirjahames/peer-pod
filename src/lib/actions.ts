@@ -1,490 +1,1070 @@
-'use server';
+"use server";
 
+import { createBrowserClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import {
-  users,
-  freelancerProfiles,
-  projects,
-  groups,
-  applications,
-  tasks,
-  chatMessages,
-  generateId,
-  generateJoinCode,
-  ensureInitialized,
-} from './data';
-import {
-  User,
-  FreelancerProfile,
-  Project,
-  Group,
-  Application,
-  Task,
-  ChatMessage,
-  GroupStatus,
-  SkillEntry,
-  Availability,
-  QuizResponse,
-} from './types';
-import { computeProjectCompatibility, rankCandidates, suggestTeamCombinations } from './compatibility';
-import { assignTasksToTeam } from './task-distribution';
+    User,
+    FreelancerProfile,
+    Project,
+    Group,
+    Application,
+    Task,
+    ChatMessage,
+    GroupStatus,
+    SkillEntry,
+    Availability,
+    PersonalityAssessment,
+    WorkStyleAssessment,
+    SchedulingAssessment,
+    BigFiveScores,
+    CompatibilityQuizResult,
+    QuizResponse,
+    TeamRole,
+    ScheduleCommitments,
+    AvailabilityGrid,
+    JobType,
+    ExperienceLevel,
+    PaymentType,
+    WorkLocation,
+} from "./types";
+import { assignTasksToTeam } from "./task-distribution";
 
-// Ensure data is initialized on every server action call
-ensureInitialized();
+// Create Supabase client for server actions
+function getSupabase() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    return createBrowserClient(url, key);
+}
 
-// Session storage (simulated - in real app would use cookies/JWT)
-let sessionUserId: string | null = null;
+// Session storage using cookies
+const SESSION_COOKIE = "peerpod_session";
+
+async function getSessionUserId(): Promise<string | null> {
+    const cookieStore = await cookies();
+    return cookieStore.get(SESSION_COOKIE)?.value || null;
+}
+
+async function setSessionUserId(userId: string | null): Promise<void> {
+    const cookieStore = await cookies();
+    if (userId) {
+        cookieStore.set(SESSION_COOKIE, userId, { 
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7 // 1 week
+        });
+    } else {
+        cookieStore.delete(SESSION_COOKIE);
+    }
+}
 
 // ============ AUTH ============
 
 export async function login(
-  email: string,
-  password: string
+    email: string,
+    password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  const user = Array.from(users.values()).find((u) => u.email === email);
-  if (!user) {
-    return { success: false, error: 'User not found' };
-  }
-  sessionUserId = user.id;
-  return { success: true, user };
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email)
+        .single();
+
+    if (error || !data) {
+        return { success: false, error: "User not found" };
+    }
+
+    const user: User = {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role as "client" | "freelancer",
+    };
+
+    await setSessionUserId(user.id);
+    return { success: true, user };
 }
 
 export async function signup(
-  email: string,
-  password: string,
-  name: string,
-  role: 'client' | 'freelancer'
+    email: string,
+    password: string,
+    name: string,
+    role: "client" | "freelancer",
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-  const existing = Array.from(users.values()).find((u) => u.email === email);
-  if (existing) {
-    return { success: false, error: 'Email already registered' };
-  }
+    const supabase = getSupabase();
+    
+    // Check if email already exists
+    const { data: existing } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .single();
 
-  const user: User = {
-    id: generateId(),
-    email,
-    name,
-    role,
-  };
+    if (existing) {
+        return { success: false, error: "Email already registered" };
+    }
 
-  users.set(user.id, user);
-  sessionUserId = user.id;
+    // Create user
+    const { data, error } = await supabase
+        .from("users")
+        .insert({ email, name, role })
+        .select()
+        .single();
 
-  if (role === 'freelancer') {
-    freelancerProfiles.set(user.id, {
-      userId: user.id,
-      personality: [],
-      skills: [],
-      availability: { hoursPerWeek: 0, timezone: 'UTC' },
-      onboardingComplete: false,
-    });
-  }
+    if (error || !data) {
+        return { success: false, error: error?.message || "Failed to create user" };
+    }
 
-  return { success: true, user };
+    const user: User = {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role as "client" | "freelancer",
+    };
+
+    await setSessionUserId(user.id);
+
+    // Create freelancer profile if freelancer
+    if (role === "freelancer") {
+        await supabase.from("freelancer_profiles").insert({
+            user_id: user.id,
+            personality: [],
+            skills: [],
+            hours_per_week: 20,
+            timezone: "UTC",
+            onboarding_complete: false,
+        });
+    }
+
+    return { success: true, user };
 }
 
 export async function logout(): Promise<void> {
-  sessionUserId = null;
+    await setSessionUserId(null);
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  if (!sessionUserId) return null;
-  return users.get(sessionUserId) || null;
+    const userId = await getSessionUserId();
+    if (!userId) return null;
+    return getUser(userId);
 }
 
 export async function setCurrentUser(userId: string): Promise<void> {
-  sessionUserId = userId;
-}
-
-// ============ FREELANCER PROFILE ============
-
-export async function getFreelancerProfile(
-  userId: string
-): Promise<FreelancerProfile | null> {
-  return freelancerProfiles.get(userId) || null;
-}
-
-export async function savePersonalityAssessment(
-  userId: string,
-  answers: number[]
-): Promise<void> {
-  const profile = freelancerProfiles.get(userId);
-  if (profile) {
-    profile.personality = answers;
-    freelancerProfiles.set(userId, profile);
-  }
-}
-
-export async function saveSkills(
-  userId: string,
-  skills: SkillEntry[]
-): Promise<void> {
-  const profile = freelancerProfiles.get(userId);
-  if (profile) {
-    profile.skills = skills;
-    freelancerProfiles.set(userId, profile);
-  }
-}
-
-export async function saveAvailability(
-  userId: string,
-  availability: Availability
-): Promise<void> {
-  const profile = freelancerProfiles.get(userId);
-  if (profile) {
-    profile.availability = availability;
-    freelancerProfiles.set(userId, profile);
-  }
-}
-
-export async function completeOnboarding(userId: string): Promise<void> {
-  const profile = freelancerProfiles.get(userId);
-  if (profile) {
-    profile.onboardingComplete = true;
-    freelancerProfiles.set(userId, profile);
-  }
-}
-
-// ============ PROJECTS ============
-
-export async function getProjects(): Promise<Project[]> {
-  return Array.from(projects.values());
-}
-
-export async function getOpenProjects(): Promise<Project[]> {
-  return Array.from(projects.values()).filter((p) => p.isOpen);
-}
-
-export async function getProject(projectId: string): Promise<Project | null> {
-  return projects.get(projectId) || null;
-}
-
-export async function getClientProjects(clientId: string): Promise<Project[]> {
-  return Array.from(projects.values()).filter((p) => p.clientId === clientId);
-}
-
-export async function createProject(
-  clientId: string,
-  data: {
-    title: string;
-    description: string;
-    requiredSkills: string[];
-    teamSize: number;
-    dueDate: string;
-    isOpen: boolean;
-    jobType?: 'contract' | 'freelance' | 'part-time' | 'full-time' | 'project-based';
-    experienceLevel?: 'entry' | 'intermediate' | 'senior' | 'expert';
-    paymentType?: 'hourly' | 'fixed' | 'milestone' | 'negotiable';
-    paymentAmount?: number;
-    paymentMax?: number;
-    workLocation?: 'remote' | 'hybrid' | 'onsite';
-    location?: string;
-    estimatedDuration?: string;
-    responsibilities?: string[];
-    requirements?: string[];
-    benefits?: string[];
-  }
-): Promise<Project> {
-  const project: Project = {
-    id: generateId(),
-    clientId,
-    ...data,
-    joinCode: generateJoinCode(),
-    createdAt: new Date().toISOString().split('T')[0],
-  };
-
-  projects.set(project.id, project);
-  return project;
-}
-
-export async function updateProject(
-  projectId: string,
-  data: Partial<{
-    title: string;
-    description: string;
-    requiredSkills: string[];
-    teamSize: number;
-    dueDate: string;
-    isOpen: boolean;
-    jobType?: 'contract' | 'freelance' | 'part-time' | 'full-time' | 'project-based';
-    experienceLevel?: 'entry' | 'intermediate' | 'senior' | 'expert';
-    paymentType?: 'hourly' | 'fixed' | 'milestone' | 'negotiable';
-    paymentAmount?: number;
-    paymentMax?: number;
-    workLocation?: 'remote' | 'hybrid' | 'onsite';
-    location?: string;
-    estimatedDuration?: string;
-    responsibilities?: string[];
-    requirements?: string[];
-    benefits?: string[];
-  }>
-): Promise<Project | null> {
-  const project = projects.get(projectId);
-  if (!project) return null;
-
-  const updated = { ...project, ...data };
-  projects.set(projectId, updated);
-  return updated;
-}
-
-export async function deleteProject(projectId: string): Promise<boolean> {
-  const project = projects.get(projectId);
-  if (!project) return false;
-
-  // Delete associated applications
-  Array.from(applications.values())
-    .filter((a) => a.projectId === projectId)
-    .forEach((a) => applications.delete(a.id));
-
-  // Delete associated group and tasks
-  const group = Array.from(groups.values()).find((g) => g.projectId === projectId);
-  if (group) {
-    Array.from(tasks.values())
-      .filter((t) => t.groupId === group.id)
-      .forEach((t) => tasks.delete(t.id));
-    Array.from(chatMessages.values())
-      .filter((m) => m.groupId === group.id)
-      .forEach((m) => chatMessages.delete(m.id));
-    groups.delete(group.id);
-  }
-
-  projects.delete(projectId);
-  return true;
-}
-
-// ============ APPLICATIONS ============
-
-export async function applyToProject(
-  freelancerId: string,
-  projectId: string
-): Promise<Application> {
-  const application: Application = {
-    id: generateId(),
-    projectId,
-    freelancerId,
-    appliedAt: new Date().toISOString(),
-  };
-
-  applications.set(application.id, application);
-  return application;
-}
-
-export async function getProjectApplications(
-  projectId: string
-): Promise<Application[]> {
-  return Array.from(applications.values()).filter(
-    (a) => a.projectId === projectId
-  );
-}
-
-export async function getFreelancerApplications(
-  freelancerId: string
-): Promise<Application[]> {
-  return Array.from(applications.values()).filter(
-    (a) => a.freelancerId === freelancerId
-  );
-}
-
-export async function hasApplied(
-  freelancerId: string,
-  projectId: string
-): Promise<boolean> {
-  return Array.from(applications.values()).some(
-    (a) => a.freelancerId === freelancerId && a.projectId === projectId
-  );
-}
-
-// ============ COMPATIBILITY ============
-
-export async function getProjectCompatibility(
-  freelancerId: string,
-  projectId: string
-): Promise<number> {
-  const profile = freelancerProfiles.get(freelancerId);
-  const project = projects.get(projectId);
-  if (!profile || !project) return 0;
-  return computeProjectCompatibility(profile, project);
-}
-
-export async function getProjectsWithCompatibility(
-  freelancerId: string
-): Promise<{ project: Project; compatibility: number }[]> {
-  const profile = freelancerProfiles.get(freelancerId);
-  if (!profile) return [];
-
-  const openProjects = Array.from(projects.values()).filter((p) => p.isOpen);
-  return openProjects.map((project) => ({
-    project,
-    compatibility: computeProjectCompatibility(profile, project),
-  }));
-}
-
-export async function getRankedCandidates(projectId: string) {
-  const project = projects.get(projectId);
-  if (!project) return [];
-
-  const projectApps = await getProjectApplications(projectId);
-  const candidateIds = projectApps.map((a) => a.freelancerId);
-
-  const group = Array.from(groups.values()).find(
-    (g) => g.projectId === projectId
-  );
-  const existingMembers = group?.members || [];
-
-  return rankCandidates(projectId, candidateIds, project, existingMembers);
-}
-
-export async function getTeamSuggestions(projectId: string) {
-  const project = projects.get(projectId);
-  if (!project) return [];
-
-  const projectApps = await getProjectApplications(projectId);
-  const candidateIds = projectApps.map((a) => a.freelancerId);
-
-  return suggestTeamCombinations(
-    projectId,
-    candidateIds,
-    project,
-    project.teamSize
-  );
-}
-
-// ============ GROUPS ============
-
-export async function getGroup(groupId: string): Promise<Group | null> {
-  return groups.get(groupId) || null;
-}
-
-export async function getProjectGroup(projectId: string): Promise<Group | null> {
-  return (
-    Array.from(groups.values()).find((g) => g.projectId === projectId) || null
-  );
-}
-
-export async function getFreelancerGroups(freelancerId: string): Promise<Group[]> {
-  return Array.from(groups.values()).filter((g) =>
-    g.members.includes(freelancerId)
-  );
-}
-
-export async function createGroup(
-  projectId: string,
-  memberIds: string[]
-): Promise<Group> {
-  const group: Group = {
-    id: generateId(),
-    projectId,
-    members: memberIds,
-    status: 'ACTIVE',
-  };
-
-  groups.set(group.id, group);
-
-  // Close the project
-  const project = projects.get(projectId);
-  if (project) {
-    project.isOpen = false;
-    projects.set(projectId, project);
-  }
-
-  // Generate tasks
-  if (project) {
-    const generatedTasks = assignTasksToTeam(
-      group.id,
-      memberIds,
-      project.title,
-      project.requiredSkills
-    );
-    generatedTasks.forEach((t) => tasks.set(t.id, t));
-  }
-
-  return group;
-}
-
-export async function computeGroupStatus(
-  group: Group,
-  project: Project
-): Promise<GroupStatus> {
-  const now = new Date();
-  const dueDate = new Date(project.dueDate);
-  const openPeriodEnd = new Date(dueDate);
-  openPeriodEnd.setDate(openPeriodEnd.getDate() + 7);
-
-  if (now < dueDate) return 'ACTIVE';
-  if (now < openPeriodEnd) return 'OPEN';
-  return 'CLOSED';
-}
-
-// ============ TASKS ============
-
-export async function getGroupTasks(groupId: string): Promise<Task[]> {
-  return Array.from(tasks.values()).filter((t) => t.groupId === groupId);
-}
-
-export async function updateTask(
-  taskId: string,
-  updates: Partial<Pick<Task, 'completed' | 'assignedTo'>>
-): Promise<void> {
-  const task = tasks.get(taskId);
-  if (task) {
-    tasks.set(taskId, { ...task, ...updates });
-  }
-}
-
-// ============ CHAT ============
-
-export async function getGroupMessages(groupId: string): Promise<ChatMessage[]> {
-  return Array.from(chatMessages.values())
-    .filter((m) => m.groupId === groupId)
-    .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-}
-
-export async function sendMessage(
-  groupId: string,
-  userId: string,
-  message: string
-): Promise<ChatMessage> {
-  const chatMessage: ChatMessage = {
-    id: generateId(),
-    groupId,
-    userId,
-    message,
-    timestamp: new Date().toISOString(),
-  };
-
-  chatMessages.set(chatMessage.id, chatMessage);
-  return chatMessage;
+    await setSessionUserId(userId);
 }
 
 // ============ USERS ============
 
 export async function getUser(userId: string): Promise<User | null> {
-  return users.get(userId) || null;
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        id: data.id,
+        email: data.email,
+        name: data.name,
+        role: data.role as "client" | "freelancer",
+    };
 }
 
 export async function getUsers(userIds: string[]): Promise<User[]> {
-  return userIds.map((id) => users.get(id)).filter((u): u is User => u !== null);
+    if (userIds.length === 0) return [];
+    
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .in("id", userIds);
+
+    if (error || !data) return [];
+
+    return data.map((u) => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role as "client" | "freelancer",
+    }));
 }
-// ============ QUIZ ============
 
-export async function saveQuizResponse(response: QuizResponse): Promise<boolean> {
-  try {
-    // Save quiz data to freelancer profile
-    const profile = freelancerProfiles.get(response.userId);
-    if (!profile) {
-      return false;
-    }
+// ============ FREELANCER PROFILE ============
 
-    // Update profile with personality scores
-    const updatedProfile: FreelancerProfile = {
-      ...profile,
-      personality: response.personalityScores,
-      onboardingComplete: true,
+export async function getFreelancerProfile(userId: string): Promise<FreelancerProfile | null> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("freelancer_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        userId: data.user_id,
+        personality: data.personality || [],
+        quizResult: data.quiz_result as CompatibilityQuizResult | undefined,
+        skills: (data.skills as SkillEntry[]) || [],
+        availability: {
+            hoursPerWeek: data.hours_per_week,
+            timezone: data.timezone,
+        },
+        onboardingComplete: data.onboarding_complete,
+    };
+}
+
+export async function savePersonalityAssessment(userId: string, answers: number[]): Promise<void> {
+    const supabase = getSupabase();
+    await supabase
+        .from("freelancer_profiles")
+        .update({ personality: answers })
+        .eq("user_id", userId);
+}
+
+export async function saveSkills(userId: string, skills: SkillEntry[]): Promise<void> {
+    const supabase = getSupabase();
+    await supabase
+        .from("freelancer_profiles")
+        .update({ skills })
+        .eq("user_id", userId);
+}
+
+export async function saveAvailability(userId: string, availability: Availability): Promise<void> {
+    const supabase = getSupabase();
+    await supabase
+        .from("freelancer_profiles")
+        .update({ 
+            hours_per_week: availability.hoursPerWeek,
+            timezone: availability.timezone
+        })
+        .eq("user_id", userId);
+}
+
+/**
+ * Calculate Big Five personality scores from quiz answers
+ */
+function calculateBigFiveScores(personality: PersonalityAssessment): BigFiveScores {
+    const extraversion = Math.round(
+        ((personality.leadership + personality.brainstormer + (6 - personality.listener)) / 3 - 1) * 25
+    );
+    
+    const openness = Math.round(
+        (((6 - personality.traditionalism) + personality.brainstormer + personality.adaptable) / 3 - 1) * 25
+    );
+    
+    const agreeableness = Math.round(
+        ((personality.peacekeeper + personality.listener + (6 - personality.challenger)) / 3 - 1) * 25
+    );
+    
+    const conscientiousness = Math.round(
+        ((personality.leadership + personality.traditionalism + personality.calmUnderPressure + personality.challenger) / 4 - 1) * 25
+    );
+    
+    const neuroticism = Math.round(
+        ((personality.controlNeed + (6 - personality.calmUnderPressure) + (6 - personality.adaptable)) / 3 - 1) * 25
+    );
+    
+    return {
+        extraversion: Math.max(0, Math.min(100, extraversion)),
+        openness: Math.max(0, Math.min(100, openness)),
+        agreeableness: Math.max(0, Math.min(100, agreeableness)),
+        conscientiousness: Math.max(0, Math.min(100, conscientiousness)),
+        neuroticism: Math.max(0, Math.min(100, neuroticism)),
+    };
+}
+
+/**
+ * Save comprehensive compatibility quiz results
+ */
+export async function saveCompatibilityQuiz(
+    userId: string,
+    personality: PersonalityAssessment,
+    workStyle: WorkStyleAssessment,
+    scheduling: SchedulingAssessment,
+    hoursPerWeek: number,
+    timezone: string
+): Promise<void> {
+    const supabase = getSupabase();
+    const bigFiveScores = calculateBigFiveScores(personality);
+    
+    const quizResult: CompatibilityQuizResult = {
+        personality,
+        workStyle,
+        scheduling,
+        bigFiveScores,
+    };
+    
+    const personalityArray = [
+        personality.leadership,
+        personality.traditionalism,
+        personality.peacekeeper,
+        personality.brainstormer,
+        personality.calmUnderPressure,
+        personality.listener,
+        personality.adaptable,
+        personality.controlNeed,
+        personality.challenger,
+    ];
+    
+    await supabase
+        .from("freelancer_profiles")
+        .update({
+            quiz_result: quizResult,
+            personality: personalityArray,
+            hours_per_week: hoursPerWeek,
+            timezone: timezone,
+        })
+        .eq("user_id", userId);
+}
+
+export async function completeOnboarding(userId: string): Promise<void> {
+    const supabase = getSupabase();
+    await supabase
+        .from("freelancer_profiles")
+        .update({ onboarding_complete: true })
+        .eq("user_id", userId);
+}
+
+/**
+ * Save quiz response from the new quiz page format
+ */
+export async function saveQuizResponse(response: QuizResponse): Promise<{ success: boolean }> {
+    const supabase = getSupabase();
+    
+    // Map personality scores (9 questions) to PersonalityAssessment
+    const scores = response.personalityScores;
+    const personality: PersonalityAssessment = {
+        leadership: scores[0] || 3,
+        traditionalism: scores[1] || 3,
+        peacekeeper: scores[2] || 3,
+        brainstormer: scores[3] || 3,
+        calmUnderPressure: scores[4] || 3,
+        listener: scores[5] || 3,
+        adaptable: scores[6] || 3,
+        controlNeed: scores[7] || 3,
+        challenger: scores[8] || 3,
     };
 
-    freelancerProfiles.set(response.userId, updatedProfile);
-    return true;
-  } catch (error) {
-    console.error('Error saving quiz response:', error);
-    return false;
-  }
+    // Compute Big Five personality traits from personality scores
+    const bigFiveScores: BigFiveScores = {
+        openness: ((5 - personality.traditionalism) + personality.adaptable) / 2 * 20, // 0-100
+        conscientiousness: (personality.leadership + personality.calmUnderPressure) / 2 * 20,
+        extraversion: ((5 - personality.listener) + personality.brainstormer) / 2 * 20,
+        agreeableness: (personality.peacekeeper + (5 - personality.challenger)) / 2 * 20,
+        neuroticism: personality.controlNeed * 20,
+    };
+
+    // Map work style
+    const workStyle: WorkStyleAssessment = {
+        gradeExpectation: response.gradeExpectation === "Pass" ? "passing" : response.gradeExpectation as "A" | "B+" | "B",
+        deadlineStyle: response.internalDeadline === "Early" ? "early" : 
+                       response.internalDeadline === "OnTime" ? "ontime" :
+                       response.internalDeadline === "Late" ? "lastminute" : "pressure",
+        vagueTaskResponse: response.ambiguityApproach === "Initiative" ? "initiative" :
+                           response.ambiguityApproach === "Propose" ? "propose" :
+                           response.ambiguityApproach === "Wait" ? "wait" : "askInstructor",
+        missingWorkResponse: response.teamResponsiveness === "Immediate" ? "doIt" :
+                             response.teamResponsiveness === "Friendly" ? "checkIn" :
+                             response.teamResponsiveness === "Wait" ? "wait" : "alert",
+        teamRole: response.contributionStyle.toLowerCase() as TeamRole,
+    };
+
+    // Map availability grid - need to lowercase keys
+    const availabilityGrid: AvailabilityGrid = {
+        monday: response.availabilityGrid["Monday"] || { morning: false, afternoon: false, evening: false },
+        tuesday: response.availabilityGrid["Tuesday"] || { morning: false, afternoon: false, evening: false },
+        wednesday: response.availabilityGrid["Wednesday"] || { morning: false, afternoon: false, evening: false },
+        thursday: response.availabilityGrid["Thursday"] || { morning: false, afternoon: false, evening: false },
+        friday: response.availabilityGrid["Friday"] || { morning: false, afternoon: false, evening: false },
+        saturday: response.availabilityGrid["Saturday"] || { morning: false, afternoon: false, evening: false },
+        sunday: response.availabilityGrid["Sunday"] || { morning: false, afternoon: false, evening: false },
+    };
+
+    // Map schedule commitments
+    const commitments: ScheduleCommitments = {
+        works20PlusHours: response.scheduleFullness.includes("Works 20+ hours/week"),
+        familyCaregiver: response.scheduleFullness.includes("Family caregiver"),
+        intensiveSportsClubs: response.scheduleFullness.includes("Intensive sports/clubs"),
+        longCommute: response.scheduleFullness.includes("Long commute"),
+        scheduleClear: response.scheduleFullness.includes("Schedule is clear"),
+    };
+
+    // Map scheduling
+    const scheduling: SchedulingAssessment = {
+        responseTime: response.responseTime === "1-2hrs" ? "1-2hours" :
+                      response.responseTime === "SameDay" ? "sameDay" :
+                      response.responseTime === "24hrs" ? "24hours" : "fewDays",
+        meetingFormat: response.meetingFormat === "InPerson" ? "inPerson" :
+                       response.meetingFormat === "Hybrid" ? "hybrid" :
+                       response.meetingFormat === "VideoOnly" ? "video" : "async",
+        commitments,
+        availabilityGrid,
+        flexibility: response.scheduleFlexibility === "Very" ? "very" :
+                     response.scheduleFlexibility === "Somewhat" ? "somewhat" : "notAtAll",
+    };
+
+    // Calculate hours per week from availability grid
+    let totalSlots = 0;
+    for (const day of Object.values(availabilityGrid)) {
+        if (day.morning) totalSlots++;
+        if (day.afternoon) totalSlots++;
+        if (day.evening) totalSlots++;
+    }
+    const hoursPerWeek = totalSlots * 3; // ~3 hours per slot
+
+    // Create quiz result object
+    const quizResult: CompatibilityQuizResult = {
+        personality,
+        workStyle,
+        scheduling,
+        bigFiveScores,
+    };
+
+    // Save to database
+    await supabase
+        .from("freelancer_profiles")
+        .update({
+            quiz_result: quizResult,
+            personality: response.personalityScores,
+            hours_per_week: hoursPerWeek,
+            onboarding_complete: true,
+        })
+        .eq("user_id", response.userId);
+
+    return { success: true };
+}
+
+// ============ PROJECTS ============
+
+export async function getProjects(): Promise<Project[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase.from("projects").select("*");
+    if (error || !data) return [];
+    return data.map(mapProjectFromDb);
+}
+
+export async function getOpenProjects(): Promise<Project[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("is_open", true);
+    if (error || !data) return [];
+    return data.map(mapProjectFromDb);
+}
+
+export async function getProject(projectId: string): Promise<Project | null> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", projectId)
+        .single();
+    if (error || !data) return null;
+    return mapProjectFromDb(data);
+}
+
+export async function getClientProjects(clientId: string): Promise<Project[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("client_id", clientId);
+    if (error || !data) return [];
+    return data.map(mapProjectFromDb);
+}
+
+export async function createProject(
+    clientId: string,
+    projectData: {
+        title: string;
+        description: string;
+        requiredSkills: string[];
+        teamSize: number;
+        dueDate: string;
+        isOpen: boolean;
+        jobType?: JobType;
+        experienceLevel?: ExperienceLevel;
+        paymentType?: PaymentType;
+        paymentAmount?: number;
+        paymentMax?: number;
+        workLocation?: WorkLocation;
+        location?: string;
+        estimatedDuration?: string;
+        responsibilities?: string[];
+        requirements?: string[];
+        benefits?: string[];
+    },
+): Promise<Project> {
+    const supabase = getSupabase();
+    const joinCode = generateJoinCode();
+
+    const { data, error } = await supabase
+        .from("projects")
+        .insert({
+            client_id: clientId,
+            title: projectData.title,
+            description: projectData.description,
+            required_skills: projectData.requiredSkills,
+            team_size: projectData.teamSize,
+            due_date: projectData.dueDate,
+            join_code: joinCode,
+            is_open: projectData.isOpen,
+            job_type: projectData.jobType,
+            experience_level: projectData.experienceLevel,
+            payment_type: projectData.paymentType,
+            payment_amount: projectData.paymentAmount,
+            payment_max: projectData.paymentMax,
+            work_location: projectData.workLocation,
+            location: projectData.location,
+            estimated_duration: projectData.estimatedDuration,
+            responsibilities: projectData.responsibilities || [],
+            requirements: projectData.requirements || [],
+            benefits: projectData.benefits || [],
+        })
+        .select()
+        .single();
+
+    if (error || !data) throw new Error(error?.message || "Failed to create project");
+    return mapProjectFromDb(data);
+}
+
+export async function updateProject(
+    projectId: string,
+    updates: Partial<{
+        title: string;
+        description: string;
+        requiredSkills: string[];
+        teamSize: number;
+        dueDate: string;
+        isOpen: boolean;
+        jobType?: JobType;
+        experienceLevel?: ExperienceLevel;
+        paymentType?: PaymentType;
+        paymentAmount?: number;
+        paymentMax?: number;
+        workLocation?: WorkLocation;
+        location?: string;
+        estimatedDuration?: string;
+        responsibilities?: string[];
+        requirements?: string[];
+        benefits?: string[];
+    }>,
+): Promise<Project | null> {
+    const supabase = getSupabase();
+
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.title) dbUpdates.title = updates.title;
+    if (updates.description) dbUpdates.description = updates.description;
+    if (updates.requiredSkills) dbUpdates.required_skills = updates.requiredSkills;
+    if (updates.teamSize) dbUpdates.team_size = updates.teamSize;
+    if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+    if (updates.isOpen !== undefined) dbUpdates.is_open = updates.isOpen;
+    if (updates.jobType) dbUpdates.job_type = updates.jobType;
+    if (updates.experienceLevel) dbUpdates.experience_level = updates.experienceLevel;
+    if (updates.paymentType) dbUpdates.payment_type = updates.paymentType;
+    if (updates.paymentAmount !== undefined) dbUpdates.payment_amount = updates.paymentAmount;
+    if (updates.paymentMax !== undefined) dbUpdates.payment_max = updates.paymentMax;
+    if (updates.workLocation) dbUpdates.work_location = updates.workLocation;
+    if (updates.location !== undefined) dbUpdates.location = updates.location;
+    if (updates.estimatedDuration !== undefined) dbUpdates.estimated_duration = updates.estimatedDuration;
+    if (updates.responsibilities) dbUpdates.responsibilities = updates.responsibilities;
+    if (updates.requirements) dbUpdates.requirements = updates.requirements;
+    if (updates.benefits) dbUpdates.benefits = updates.benefits;
+
+    const { error } = await supabase
+        .from("projects")
+        .update(dbUpdates)
+        .eq("id", projectId);
+
+    if (error) return null;
+    return getProject(projectId);
+}
+
+export async function deleteProject(projectId: string): Promise<boolean> {
+    const supabase = getSupabase();
+    const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", projectId);
+    return !error;
+}
+
+function mapProjectFromDb(data: Record<string, unknown>): Project {
+    return {
+        id: data.id as string,
+        clientId: data.client_id as string,
+        title: data.title as string,
+        description: data.description as string,
+        requiredSkills: (data.required_skills as string[]) || [],
+        teamSize: data.team_size as number,
+        dueDate: data.due_date as string,
+        joinCode: data.join_code as string,
+        isOpen: data.is_open as boolean,
+        createdAt: ((data.created_at as string) || new Date().toISOString()).split("T")[0],
+        jobType: data.job_type as JobType | undefined,
+        experienceLevel: data.experience_level as ExperienceLevel | undefined,
+        paymentType: data.payment_type as PaymentType | undefined,
+        paymentAmount: data.payment_amount as number | undefined,
+        paymentMax: data.payment_max as number | undefined,
+        workLocation: data.work_location as WorkLocation | undefined,
+        location: data.location as string | undefined,
+        estimatedDuration: data.estimated_duration as string | undefined,
+        responsibilities: (data.responsibilities as string[]) || [],
+        requirements: (data.requirements as string[]) || [],
+        benefits: (data.benefits as string[]) || [],
+    };
+}
+
+function generateJoinCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// ============ APPLICATIONS ============
+
+export async function applyToProject(
+    freelancerId: string,
+    projectId: string,
+): Promise<Application> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("applications")
+        .insert({
+            project_id: projectId,
+            freelancer_id: freelancerId,
+        })
+        .select()
+        .single();
+
+    if (error || !data) throw new Error(error?.message || "Failed to apply");
+
+    return {
+        id: data.id,
+        projectId: data.project_id,
+        freelancerId: data.freelancer_id,
+        appliedAt: data.applied_at,
+    };
+}
+
+export async function getProjectApplications(projectId: string): Promise<Application[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("project_id", projectId);
+
+    if (error || !data) return [];
+
+    return data.map((a) => ({
+        id: a.id,
+        projectId: a.project_id,
+        freelancerId: a.freelancer_id,
+        appliedAt: a.applied_at,
+    }));
+}
+
+export async function getFreelancerApplications(freelancerId: string): Promise<Application[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("freelancer_id", freelancerId);
+
+    if (error || !data) return [];
+
+    return data.map((a) => ({
+        id: a.id,
+        projectId: a.project_id,
+        freelancerId: a.freelancer_id,
+        appliedAt: a.applied_at,
+    }));
+}
+
+export async function hasApplied(freelancerId: string, projectId: string): Promise<boolean> {
+    const supabase = getSupabase();
+    const { data } = await supabase
+        .from("applications")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("freelancer_id", freelancerId)
+        .single();
+
+    return !!data;
+}
+
+// ============ COMPATIBILITY ============
+
+export async function getProjectCompatibility(
+    freelancerId: string,
+    projectId: string,
+): Promise<number> {
+    const profile = await getFreelancerProfile(freelancerId);
+    const project = await getProject(projectId);
+    if (!profile || !project) return 0;
+    
+    const { computeProjectCompatibility } = await import("./compatibility");
+    return computeProjectCompatibility(profile, project);
+}
+
+export async function getProjectsWithCompatibility(
+    freelancerId: string,
+): Promise<{ project: Project; compatibility: number }[]> {
+    const profile = await getFreelancerProfile(freelancerId);
+    if (!profile) return [];
+
+    const openProjects = await getOpenProjects();
+    const { computeProjectCompatibility } = await import("./compatibility");
+    
+    return openProjects.map((project) => ({
+        project,
+        compatibility: computeProjectCompatibility(profile, project),
+    }));
+}
+
+export async function getRankedCandidates(projectId: string) {
+    const project = await getProject(projectId);
+    if (!project) return [];
+
+    const projectApps = await getProjectApplications(projectId);
+    const candidateIds = projectApps.map((a) => a.freelancerId);
+    
+    // Get all profiles for candidates
+    const profiles = await Promise.all(
+        candidateIds.map((id) => getFreelancerProfile(id))
+    );
+    const profileMap = new Map<string, FreelancerProfile>();
+    profiles.forEach((p, i) => {
+        if (p) profileMap.set(candidateIds[i], p);
+    });
+
+    const group = await getProjectGroup(projectId);
+    const existingMembers = group?.members || [];
+    
+    // Get existing member profiles
+    const memberProfiles = await Promise.all(
+        existingMembers.map((id) => getFreelancerProfile(id))
+    );
+    const memberProfileMap = new Map<string, FreelancerProfile>();
+    memberProfiles.forEach((p, i) => {
+        if (p) memberProfileMap.set(existingMembers[i], p);
+    });
+
+    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
+
+    const results: {
+        freelancerId: string;
+        projectScore: number;
+        avgMemberScore: number;
+        totalScore: number;
+    }[] = [];
+
+    for (const candidateId of candidateIds) {
+        const profile = profileMap.get(candidateId);
+        if (!profile) continue;
+
+        const projectScore = computeProjectCompatibility(profile, project);
+
+        let memberScoreSum = 0;
+        let memberCount = 0;
+
+        for (const memberId of existingMembers) {
+            const memberProfile = memberProfileMap.get(memberId);
+            if (memberProfile) {
+                memberScoreSum += computeFreelancerCompatibility(profile, memberProfile);
+                memberCount++;
+            }
+        }
+
+        const avgMemberScore = memberCount > 0 ? Math.round(memberScoreSum / memberCount) : 100;
+        const totalScore = Math.round(projectScore * 0.6 + avgMemberScore * 0.4);
+
+        results.push({
+            freelancerId: candidateId,
+            projectScore,
+            avgMemberScore,
+            totalScore,
+        });
+    }
+
+    return results.sort((a, b) => b.totalScore - a.totalScore);
+}
+
+export async function getTeamSuggestions(projectId: string) {
+    const project = await getProject(projectId);
+    if (!project) return [];
+
+    const projectApps = await getProjectApplications(projectId);
+    const candidateIds = projectApps.map((a) => a.freelancerId);
+
+    // Get all profiles
+    const profiles = await Promise.all(
+        candidateIds.map((id) => getFreelancerProfile(id))
+    );
+    const profileMap = new Map<string, FreelancerProfile>();
+    profiles.forEach((p, i) => {
+        if (p) profileMap.set(candidateIds[i], p);
+    });
+
+    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
+
+    const teamSize = project.teamSize;
+    if (candidateIds.length < teamSize) {
+        return candidateIds.length > 0 ? [{ members: candidateIds, avgScore: 50 }] : [];
+    }
+
+    const combinations: { members: string[]; avgScore: number }[] = [];
+
+    function generateCombinations(
+        arr: string[],
+        size: number,
+        start = 0,
+        current: string[] = [],
+        results: string[][] = [],
+    ): string[][] {
+        if (results.length >= 50) return results;
+        if (current.length === size) {
+            results.push([...current]);
+            return results;
+        }
+        for (let i = start; i <= arr.length - (size - current.length); i++) {
+            if (results.length >= 50) break;
+            current.push(arr[i]);
+            generateCombinations(arr, size, i + 1, current, results);
+            current.pop();
+        }
+        return results;
+    }
+
+    const allCombos = generateCombinations(candidateIds, teamSize);
+
+    for (const combo of allCombos) {
+        let totalCompatibility = 0;
+        let pairCount = 0;
+
+        for (let i = 0; i < combo.length; i++) {
+            const p1 = profileMap.get(combo[i]);
+            if (!p1) continue;
+
+            totalCompatibility += computeProjectCompatibility(p1, project);
+            pairCount++;
+
+            for (let j = i + 1; j < combo.length; j++) {
+                const p2 = profileMap.get(combo[j]);
+                if (!p2) continue;
+                totalCompatibility += computeFreelancerCompatibility(p1, p2);
+                pairCount++;
+            }
+        }
+
+        const avgScore = pairCount > 0 ? Math.round(totalCompatibility / pairCount) : 0;
+        combinations.push({ members: combo, avgScore });
+    }
+
+    return combinations.sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
+}
+
+// ============ GROUPS ============
+
+export async function getGroup(groupId: string): Promise<Group | null> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("id", groupId)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        id: data.id,
+        projectId: data.project_id,
+        members: data.members || [],
+        status: data.status as GroupStatus,
+    };
+}
+
+export async function getProjectGroup(projectId: string): Promise<Group | null> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("project_id", projectId)
+        .single();
+
+    if (error || !data) return null;
+
+    return {
+        id: data.id,
+        projectId: data.project_id,
+        members: data.members || [],
+        status: data.status as GroupStatus,
+    };
+}
+
+export async function getFreelancerGroups(freelancerId: string): Promise<Group[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .contains("members", [freelancerId]);
+
+    if (error || !data) return [];
+
+    return data.map((g) => ({
+        id: g.id,
+        projectId: g.project_id,
+        members: g.members || [],
+        status: g.status as GroupStatus,
+    }));
+}
+
+export async function createGroup(projectId: string, memberIds: string[]): Promise<Group> {
+    const supabase = getSupabase();
+    
+    const { data, error } = await supabase
+        .from("groups")
+        .insert({
+            project_id: projectId,
+            members: memberIds,
+            status: "ACTIVE",
+        })
+        .select()
+        .single();
+
+    if (error || !data) throw new Error(error?.message || "Failed to create group");
+
+    // Close the project
+    await supabase
+        .from("projects")
+        .update({ is_open: false })
+        .eq("id", projectId);
+
+    // Generate tasks
+    const project = await getProject(projectId);
+    if (project) {
+        const generatedTasks = assignTasksToTeam(
+            data.id,
+            memberIds,
+            project.title,
+            project.requiredSkills,
+        );
+        
+        for (const task of generatedTasks) {
+            await supabase.from("tasks").insert({
+                group_id: task.groupId,
+                title: task.title,
+                description: task.description,
+                assigned_to: task.assignedTo,
+                completed: task.completed,
+            });
+        }
+    }
+
+    return {
+        id: data.id,
+        projectId: data.project_id,
+        members: data.members,
+        status: data.status as GroupStatus,
+    };
+}
+
+export async function computeGroupStatus(group: Group, project: Project): Promise<GroupStatus> {
+    const now = new Date();
+    const dueDate = new Date(project.dueDate);
+    const openPeriodEnd = new Date(dueDate);
+    openPeriodEnd.setDate(openPeriodEnd.getDate() + 7);
+
+    if (now < dueDate) return "ACTIVE";
+    if (now < openPeriodEnd) return "OPEN";
+    return "CLOSED";
+}
+
+// ============ TASKS ============
+
+export async function getGroupTasks(groupId: string): Promise<Task[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .eq("group_id", groupId);
+
+    if (error || !data) return [];
+
+    return data.map((t) => ({
+        id: t.id,
+        groupId: t.group_id,
+        title: t.title,
+        description: t.description,
+        assignedTo: t.assigned_to,
+        completed: t.completed,
+    }));
+}
+
+export async function updateTask(
+    taskId: string,
+    updates: Partial<Pick<Task, "completed" | "assignedTo">>,
+): Promise<void> {
+    const supabase = getSupabase();
+    
+    const dbUpdates: Record<string, unknown> = {};
+    if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+    if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
+    
+    await supabase
+        .from("tasks")
+        .update(dbUpdates)
+        .eq("id", taskId);
+}
+
+// ============ CHAT ============
+
+export async function getGroupMessages(groupId: string): Promise<ChatMessage[]> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .eq("group_id", groupId)
+        .order("timestamp", { ascending: true });
+
+    if (error || !data) return [];
+
+    return data.map((m) => ({
+        id: m.id,
+        groupId: m.group_id,
+        userId: m.user_id,
+        message: m.message,
+        timestamp: m.timestamp,
+    }));
+}
+
+export async function sendMessage(
+    groupId: string,
+    userId: string,
+    message: string,
+): Promise<ChatMessage> {
+    const supabase = getSupabase();
+    const { data, error } = await supabase
+        .from("chat_messages")
+        .insert({
+            group_id: groupId,
+            user_id: userId,
+            message,
+        })
+        .select()
+        .single();
+
+    if (error || !data) throw new Error(error?.message || "Failed to send message");
+
+    return {
+        id: data.id,
+        groupId: data.group_id,
+        userId: data.user_id,
+        message: data.message,
+        timestamp: data.timestamp,
+    };
 }
