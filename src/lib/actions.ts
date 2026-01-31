@@ -23,6 +23,7 @@ import {
   GroupStatus,
   SkillEntry,
   Availability,
+  QuizResponse,
 } from './types';
 import { computeProjectCompatibility, rankCandidates, suggestTeamCombinations } from './compatibility';
 import { assignTasksToTeam } from './task-distribution';
@@ -462,4 +463,28 @@ export async function getUser(userId: string): Promise<User | null> {
 
 export async function getUsers(userIds: string[]): Promise<User[]> {
   return userIds.map((id) => users.get(id)).filter((u): u is User => u !== null);
+}
+// ============ QUIZ ============
+
+export async function saveQuizResponse(response: QuizResponse): Promise<boolean> {
+  try {
+    // Save quiz data to freelancer profile
+    const profile = freelancerProfiles.get(response.userId);
+    if (!profile) {
+      return false;
+    }
+
+    // Update profile with personality scores
+    const updatedProfile: FreelancerProfile = {
+      ...profile,
+      personality: response.personalityScores,
+      onboardingComplete: true,
+    };
+
+    freelancerProfiles.set(response.userId, updatedProfile);
+    return true;
+  } catch (error) {
+    console.error('Error saving quiz response:', error);
+    return false;
+  }
 }

@@ -94,3 +94,35 @@ export interface CompatibilityScore {
   memberScores: { memberId: string; score: number }[];
   totalScore: number;
 }
+export interface QuizResponse {
+  userId: string;
+  completedAt: string;
+  // Section 1: Personality (Big Five scores 1-5 for each question)
+  personalityScores: number[]; // 9 questions
+  // Section 2: Work Style (letter-based answers)
+  gradeExpectation: 'A' | 'B+' | 'B' | 'Pass';
+  internalDeadline: 'Early' | 'OnTime' | 'Late' | 'UnderPressure';
+  ambiguityApproach: 'Initiative' | 'Propose' | 'Wait' | 'AskInstructor';
+  teamResponsiveness: 'Immediate' | 'Friendly' | 'Wait' | 'Alert';
+  contributionStyle: 'Leader' | 'Workhorse' | 'Diplomat' | 'Specialist';
+  // Section 3: Scheduling & Communication
+  responseTime: '1-2hrs' | 'SameDay' | '24hrs' | 'FewDays';
+  meetingFormat: 'InPerson' | 'Hybrid' | 'VideoOnly' | 'Async';
+  scheduleFullness: string[]; // array of commitments
+  availabilityGrid: {
+    [day: string]: {
+      morning: boolean;
+      afternoon: boolean;
+      evening: boolean;
+    };
+  };
+  scheduleFlexibility: 'Very' | 'Somewhat' | 'NotAtAll';
+  // Derived personality profile
+  personalityProfile?: {
+    extraversion: number;
+    agreeableness: number;
+    conscientiousness: number;
+    neuroticism: number;
+    openness: number;
+  };
+}

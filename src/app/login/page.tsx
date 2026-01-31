@@ -26,7 +26,7 @@ export default function LoginPage() {
       if (result.user.role === 'client') {
         router.push('/dashboard');
       } else {
-        router.push('/freelancer');
+        router.push('/quiz');
       }
     } else {
       setError(result.error || 'Login failed');
@@ -35,58 +35,123 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-8">
-      <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold mb-8 text-center">Login to PeerPod</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-              required
-            />
+    <main className="min-h-screen bg-gradient-brand relative overflow-hidden flex items-center justify-center p-6">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-0 w-96 h-96 bg-primary-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse"></div>
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent-300 rounded-full mix-blend-multiply filter blur-3xl opacity-15 animate-pulse delay-1000"></div>
+      </div>
+
+      {/* Form */}
+      <div className="w-full max-w-md relative z-10 animate-fadeIn">
+        {/* Header */}
+        <Link href="/" className="inline-flex items-center gap-2 mb-8 group hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-lg bg-gradient-accent flex items-center justify-center shadow-lg">
+            <span className="text-white font-bold text-xl">P</span>
           </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-              required
-            />
-          </div>
-          {error && <p className="text-red-600 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 transition"
-          >
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
+          <span className="font-bold text-2xl bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
+            PeerPod
+          </span>
+        </Link>
+
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2 text-gray-900">Welcome back</h1>
+          <p className="text-gray-600">Log in to your account and get collaborating</p>
+        </div>
+
+        {/* Form Card */}
+        <div className="card">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email Input */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
+                Email Address
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 border-2 border-light rounded-lg focus:border-accent-500 focus:outline-none transition-colors placeholder:text-gray-400"
+                required
+              />
+            </div>
+
+            {/* Password Input */}
+            <div>
+              <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 border-2 border-light rounded-lg focus:border-accent-500 focus:outline-none transition-colors placeholder:text-gray-400"
+                required
+              />
+            </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  {error}
+                </div>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Logging in...</span>
+                </>
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Sign Up Link */}
+        <p className="mt-6 text-center text-gray-600">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-black underline">
-            Sign up
+          <Link href="/signup" className="font-semibold text-accent-600 hover:text-accent-700 transition-colors">
+            Create one now
           </Link>
         </p>
-        <div className="mt-8 p-4 bg-gray-100 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">Demo accounts:</p>
-          <ul className="text-sm text-gray-600 space-y-1">
-            <li>alice@example.com (Freelancer)</li>
-            <li>bob@example.com (Freelancer)</li>
-            <li>carol@example.com (Client)</li>
-          </ul>
+
+        {/* Demo Accounts */}
+        <div className="mt-8 p-4 rounded-lg border border-primary-200 bg-primary-50/50 backdrop-blur-sm">
+          <p className="text-sm font-semibold text-gray-900 mb-3">Demo Accounts:</p>
+          <div className="space-y-2 text-sm text-gray-600">
+            <div className="flex items-center justify-between">
+              <span>Freelancer:</span>
+              <code className="px-2 py-1 bg-white/50 rounded text-xs font-mono text-accent-600">alice@example.com</code>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Client:</span>
+              <code className="px-2 py-1 bg-white/50 rounded text-xs font-mono text-primary-600">carol@example.com</code>
+            </div>
+          </div>
         </div>
       </div>
     </main>

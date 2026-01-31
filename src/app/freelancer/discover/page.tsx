@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
+import { useRouter } from 'next/navigation';
 import {
   getProjectsWithCompatibility,
   applyToProject,
   hasApplied,
+  getFreelancerProfile,
 } from '@/lib/actions';
 import { Project } from '@/lib/types';
 import { AVAILABLE_SKILLS } from '@/lib/constants';
@@ -62,6 +64,7 @@ const formatLocation = (project: Project): string => {
 
 export default function DiscoverPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [projects, setProjects] = useState<ProjectWithScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [skillFilter, setSkillFilter] = useState<string>('');
@@ -72,6 +75,13 @@ export default function DiscoverPage() {
   useEffect(() => {
     async function loadProjects() {
       if (!user) return;
+
+      // TODO: Enable quiz completion check when database is implemented
+      // const profile = await getFreelancerProfile(user.id);
+      // if (!profile?.onboardingComplete) {
+      //   router.push('/quiz');
+      //   return;
+      // }
 
       const projectsWithScore = await getProjectsWithCompatibility(user.id);
       const withApplied = await Promise.all(
@@ -85,7 +95,7 @@ export default function DiscoverPage() {
       setLoading(false);
     }
     loadProjects();
-  }, [user]);
+  }, [user, router]);
 
   const handleApply = async (projectId: string) => {
     if (!user) return;
@@ -115,49 +125,50 @@ export default function DiscoverPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-2">Discover Projects</h1>
-      <p className="text-gray-600 mb-6">{filteredProjects.length} projects match your profile</p>
+    <div className="min-h-screen bg-gradient-brand page-container">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2">Discover Projects</h1>
+        <p className="text-gray-600 mb-6">{filteredProjects.length} projects match your profile</p>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <select
-          value={skillFilter}
-          onChange={(e) => setSkillFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-        >
-          <option value="">All Skills</option>
-          {AVAILABLE_SKILLS.map((skill) => (
-            <option key={skill} value={skill}>
-              {skill}
-            </option>
-          ))}
-        </select>
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4 mb-6">
+          <select
+            value={skillFilter}
+            onChange={(e) => setSkillFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+          >
+            <option value="">All Skills</option>
+            {AVAILABLE_SKILLS.map((skill) => (
+              <option key={skill} value={skill}>
+                {skill}
+              </option>
+            ))}
+          </select>
 
-        <select
-          value={jobTypeFilter}
-          onChange={(e) => setJobTypeFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-        >
-          <option value="">All Job Types</option>
-          <option value="project-based">Project-Based</option>
-          <option value="contract">Contract</option>
-          <option value="freelance">Freelance</option>
-          <option value="part-time">Part-Time</option>
-          <option value="full-time">Full-Time</option>
-        </select>
+          <select
+            value={jobTypeFilter}
+            onChange={(e) => setJobTypeFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+          >
+            <option value="">All Job Types</option>
+            <option value="project-based">Project-Based</option>
+            <option value="contract">Contract</option>
+            <option value="freelance">Freelance</option>
+            <option value="part-time">Part-Time</option>
+            <option value="full-time">Full-Time</option>
+          </select>
 
-        <select
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-          className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
-        >
-          <option value="">All Locations</option>
-          <option value="remote">Remote</option>
-          <option value="hybrid">Hybrid</option>
-          <option value="onsite">On-Site</option>
-        </select>
-      </div>
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+          >
+            <option value="">All Locations</option>
+            <option value="remote">Remote</option>
+            <option value="hybrid">Hybrid</option>
+            <option value="onsite">On-Site</option>
+          </select>
+        </div>
 
       {filteredProjects.length === 0 ? (
         <p className="text-gray-600">No projects found matching your filters.</p>
@@ -312,6 +323,7 @@ export default function DiscoverPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

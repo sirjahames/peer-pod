@@ -12,3 +12,224 @@ body {
   background: var(--background);
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+/* Smooth transitions and animations */
+* {
+  @apply transition-all duration-300;
+}
+
+a {
+  @apply no-underline;
+}
+
+/* Gradient backgrounds */
+.bg-gradient-brand {
+  @apply bg-gradient-to-br from-primary-50 via-light to-accent-50;
+}
+
+.bg-gradient-accent {
+  @apply bg-gradient-to-r from-accent-600 to-primary-600;
+}
+
+/* Interactive buttons */
+.btn-primary {
+  @apply px-6 py-3 rounded-lg font-medium bg-gradient-to-r from-accent-600 to-primary-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply px-6 py-3 rounded-lg font-medium border-2 border-accent-600 text-accent-600 hover:bg-accent-50 transform hover:scale-105 active:scale-95 transition-all duration-200;
+}
+
+.btn-ghost {
+  @apply px-4 py-2 rounded-lg text-primary-700 hover:bg-primary-100 transform hover:translate-x-1 transition-all duration-200;
+}
+
+/* Card styling */
+.card {
+  @apply p-6 rounded-xl border border-light/30 bg-white/80 backdrop-blur-sm hover:border-accent-300 hover:shadow-xl transition-all duration-300;
+}
+
+.card-interactive {
+  @apply card cursor-pointer hover:translate-y-1;
+}
+
+/* Loading animation */
+.loading-shimmer {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 0%,
+    #e0e0e0 50%,
+    #f0f0f0 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Smooth page transitions */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main {
+  animation: pageEnter 0.5s ease-out;
+}
+
+/* Status badges with animations */
+.badge-success {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-100 text-primary-700 text-sm font-medium;
+}
+
+.badge-pending {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-100 text-accent-700 text-sm font-medium;
+}
+
+.badge-neutral {
+  @apply inline-flex items-center gap-2 px-3 py-1 rounded-full bg-light text-gray-700 text-sm font-medium;
+}
+
+/* Pulse indicator */
+.pulse-dot {
+  @apply w-2 h-2 rounded-full bg-primary-500 animate-pulse;
+}
+
+/* Standardized padding scale for consistency */
+.pad-xs {
+  @apply px-2 py-1;
+}
+
+.pad-sm {
+  @apply px-3 py-2;
+}
+
+.pad-md {
+  @apply px-4 py-2;
+}
+
+.pad-lg {
+  @apply px-4 py-3;
+}
+
+.pad-xl {
+  @apply px-6 py-3;
+}
+
+.pad-xxl {
+  @apply px-6 py-4;
+}
+
+/* Container padding standardization */
+.page-container {
+  @apply p-6;
+}
+
+.page-hero {
+  @apply px-6 py-12;
+}
+
+/* Section spacing standardization */
+.section-sm {
+  @apply mb-8;
+}
+
+.section-md {
+  @apply mb-12;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  @apply outline-2 outline-offset-2 outline-accent-500;
+}
+
+/* Hover effects for links */
+.nav-link {
+  @apply relative px-4 py-2 text-gray-700 hover:text-accent-600 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-gradient-to-r after:from-accent-600 after:to-primary-600 hover:after:w-full after:transition-all after:duration-300;
+}
+
+.nav-link.active {
+  @apply text-accent-600 after:w-full;
+}
+
+/* Input styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+  @apply transition-all duration-200;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  @apply shadow-lg;
+}
+
+/* Skeleton loading animation */
+.skeleton {
+  @apply bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 rounded-lg;
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Hover card effect */
+.card-hover {
+  @apply hover:shadow-2xl hover:border-primary-200 hover:-translate-y-1;
+}
+
+/* Text gradient */
+.text-gradient {
+  @apply bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent;
+}
+
+/* Smooth link underline */
+.link-underline {
+  @apply relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-gradient-to-r after:from-accent-600 after:to-primary-600 hover:after:w-full after:transition-all after:duration-300;
+}
+
+/* Enhanced form inputs */
+input:not([type="checkbox"]):not([type="radio"]) {
+  @apply bg-white/50 backdrop-blur-sm;
+}
+
+/* Smooth transitions on all interactive elements */
+button,
+a,
+input,
+textarea,
+select {
+  @apply transition-all duration-200;
+}
+
+/* Responsive typography */
+@media (max-width: 768px) {
+  h1 {
+    @apply text-3xl;
+  }
+  h2 {
+    @apply text-2xl;
+  }
+  h3 {
+    @apply text-xl;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+}

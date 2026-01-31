@@ -3,7 +3,6 @@
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { Navigation } from './navigation';
 
 export function AuthGuard({
   children,
@@ -40,10 +39,5 @@ export function AuthGuard({
     return null;
   }
 
-  return (
-    <>
-      <Navigation />
-      <main className="max-w-6xl mx-auto p-6">{children}</main>
-    </>
-  );
+  return <>{children}</>;
 }
