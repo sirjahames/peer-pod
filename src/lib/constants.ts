@@ -60,14 +60,23 @@ export const WORK_STYLE_OPTIONS = {
     deadlineStyle: [
         { value: "early", label: "I finish my parts days early to allow for review" },
         { value: "ontime", label: "I finish exactly when they are due" },
-        { value: "lastminute", label: "I usually need a small extension or finish right at the buzzer" },
+        {
+            value: "lastminute",
+            label: "I usually need a small extension or finish right at the buzzer",
+        },
         { value: "pressure", label: "I work best under extreme pressure (the night before)" },
     ],
     vagueTaskResponse: [
-        { value: "initiative", label: "Take initiative, figure it out, and start working immediately" },
+        {
+            value: "initiative",
+            label: "Take initiative, figure it out, and start working immediately",
+        },
         { value: "propose", label: "Propose a potential plan to the group for feedback" },
         { value: "wait", label: "Wait for a more assertive group member to clarify" },
-        { value: "askInstructor", label: "Reach out to the instructor/client before doing anything else" },
+        {
+            value: "askInstructor",
+            label: "Reach out to the instructor/client before doing anything else",
+        },
     ],
     missingWorkResponse: [
         { value: "doIt", label: "Do it yourself immediately to ensure it's done right" },
@@ -79,7 +88,10 @@ export const WORK_STYLE_OPTIONS = {
         { value: "leader", label: "The 'Leader' who managed everyone" },
         { value: "workhorse", label: "The 'Workhorse' who did a lot of the heavy lifting" },
         { value: "diplomat", label: "The 'Diplomat' who kept everyone happy and bridged gaps" },
-        { value: "specialist", label: "The 'Specialist' who did exactly what was asked and nothing more" },
+        {
+            value: "specialist",
+            label: "The 'Specialist' who did exactly what was asked and nothing more",
+        },
     ],
 } as const;
 
@@ -111,7 +123,15 @@ export const SCHEDULING_OPTIONS = {
     ],
 } as const;
 
-export const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
+export const DAYS_OF_WEEK = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+] as const;
 export const TIME_BLOCKS = ["morning", "afternoon", "evening"] as const;
 
 // Legacy personality questions (kept for backward compatibility)

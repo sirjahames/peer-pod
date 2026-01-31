@@ -3,11 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import {
-    saveCompatibilityQuiz,
-    saveSkills,
-    completeOnboarding,
-} from "@/lib/actions";
+import { saveCompatibilityQuiz, saveSkills, completeOnboarding } from "@/lib/actions";
 import {
     PERSONALITY_QUIZ_QUESTIONS,
     WORK_STYLE_OPTIONS,
@@ -114,7 +110,14 @@ export default function OnboardingPage() {
 
     const handleComplete = async () => {
         if (!user) return;
-        await saveCompatibilityQuiz(user.id, personalityAnswers, workStyle, scheduling, hoursPerWeek, timezone);
+        await saveCompatibilityQuiz(
+            user.id,
+            personalityAnswers,
+            workStyle,
+            scheduling,
+            hoursPerWeek,
+            timezone,
+        );
         await saveSkills(user.id, selectedSkills);
         await completeOnboarding(user.id);
         router.push("/freelancer");
@@ -135,7 +138,10 @@ export default function OnboardingPage() {
         );
     };
 
-    const toggleAvailability = (day: keyof AvailabilityGrid, time: "morning" | "afternoon" | "evening") => {
+    const toggleAvailability = (
+        day: keyof AvailabilityGrid,
+        time: "morning" | "afternoon" | "evening",
+    ) => {
         setScheduling((prev) => ({
             ...prev,
             availabilityGrid: {
@@ -159,7 +165,8 @@ export default function OnboardingPage() {
     };
 
     return (
-        <div className="max-w-3xl mx-auto py-8 px-4">
+        <div className="min-h-screen bg-gradient-brand page-container">
+            <div className="max-w-3xl mx-auto">
             {/* Progress Bar */}
             <div className="mb-8">
                 <div className="flex gap-2 mb-4">
@@ -187,38 +194,81 @@ export default function OnboardingPage() {
             {step === "intro" && (
                 <div className="text-center space-y-6">
                     <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-full mb-4">
-                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <svg
+                            className="w-10 h-10 text-white"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
                         </svg>
                     </div>
                     <h1 className="text-3xl font-bold">Group Compatibility & Synergy Quiz</h1>
                     <p className="text-lg text-gray-600 max-w-xl mx-auto">
-                        To match you with teammates who share your work ethic, complement your personality, and fit your schedule.
+                        To match you with teammates who share your work ethic, complement your
+                        personality, and fit your schedule.
                     </p>
                     <div className="bg-gray-50 rounded-xl p-6 text-left max-w-md mx-auto space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg
+                                    className="w-4 h-4 text-emerald-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
                                 </svg>
                             </div>
-                            <span className="text-gray-700"><strong>Time:</strong> 5–7 minutes</span>
+                            <span className="text-gray-700">
+                                <strong>Time:</strong> 5–7 minutes
+                            </span>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                <svg
+                                    className="w-4 h-4 text-blue-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                    />
                                 </svg>
                             </div>
-                            <span className="text-gray-700"><strong>Privacy:</strong> Answers are confidential</span>
+                            <span className="text-gray-700">
+                                <strong>Privacy:</strong> Answers are confidential
+                            </span>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <svg
+                                    className="w-4 h-4 text-purple-600"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                    />
                                 </svg>
                             </div>
-                            <span className="text-gray-700"><strong>No wrong answers:</strong> Just be honest!</span>
+                            <span className="text-gray-700">
+                                <strong>No wrong answers:</strong> Just be honest!
+                            </span>
                         </div>
                     </div>
                     <button
@@ -235,7 +285,8 @@ export default function OnboardingPage() {
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold mb-2">Personality & Dynamics</h2>
                         <p className="text-gray-600">
-                            Rate how much you agree with each statement on a scale of 1 (Strongly Disagree) to 5 (Strongly Agree).
+                            Rate how much you agree with each statement on a scale of 1 (Strongly
+                            Disagree) to 5 (Strongly Agree).
                         </p>
                     </div>
                     <div className="space-y-8">
@@ -255,7 +306,9 @@ export default function OnboardingPage() {
                                                     }));
                                                 }}
                                                 className={`w-12 h-12 rounded-full border-2 font-semibold transition ${
-                                                    personalityAnswers[q.id as keyof PersonalityAssessment] === value
+                                                    personalityAnswers[
+                                                        q.id as keyof PersonalityAssessment
+                                                    ] === value
                                                         ? "bg-black text-white border-black"
                                                         : "border-gray-300 hover:border-black"
                                                 }`}>
@@ -289,24 +342,36 @@ export default function OnboardingPage() {
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold mb-2">Work Style & Standards</h2>
                         <p className="text-gray-600">
-                            Select the option that best describes your actual habits and expectations.
+                            Select the option that best describes your actual habits and
+                            expectations.
                         </p>
                     </div>
                     <div className="space-y-8">
                         {/* Grade Expectation */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">{"What is your \"Minimum Acceptable\" quality standard for projects?"}</p>
+                            <p className="font-medium mb-4">
+                                {'What is your "Minimum Acceptable" quality standard for projects?'}
+                            </p>
                             <div className="space-y-3">
                                 {WORK_STYLE_OPTIONS.gradeExpectation.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="gradeExpectation"
                                             checked={workStyle.gradeExpectation === opt.value}
-                                            onChange={() => setWorkStyle((prev) => ({ ...prev, gradeExpectation: opt.value as GradeExpectation }))}
+                                            onChange={() =>
+                                                setWorkStyle((prev) => ({
+                                                    ...prev,
+                                                    gradeExpectation: opt.value as GradeExpectation,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -314,18 +379,29 @@ export default function OnboardingPage() {
 
                         {/* Deadline Style */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">{"Which best describes your \"Internal Deadline\"?"}</p>
+                            <p className="font-medium mb-4">
+                                {'Which best describes your "Internal Deadline"?'}
+                            </p>
                             <div className="space-y-3">
                                 {WORK_STYLE_OPTIONS.deadlineStyle.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="deadlineStyle"
                                             checked={workStyle.deadlineStyle === opt.value}
-                                            onChange={() => setWorkStyle((prev) => ({ ...prev, deadlineStyle: opt.value as DeadlineStyle }))}
+                                            onChange={() =>
+                                                setWorkStyle((prev) => ({
+                                                    ...prev,
+                                                    deadlineStyle: opt.value as DeadlineStyle,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -333,18 +409,30 @@ export default function OnboardingPage() {
 
                         {/* Vague Task Response */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">When a task is vague or the requirements are unclear, you:</p>
+                            <p className="font-medium mb-4">
+                                When a task is vague or the requirements are unclear, you:
+                            </p>
                             <div className="space-y-3">
                                 {WORK_STYLE_OPTIONS.vagueTaskResponse.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="vagueTaskResponse"
                                             checked={workStyle.vagueTaskResponse === opt.value}
-                                            onChange={() => setWorkStyle((prev) => ({ ...prev, vagueTaskResponse: opt.value as VagueTaskResponse }))}
+                                            onChange={() =>
+                                                setWorkStyle((prev) => ({
+                                                    ...prev,
+                                                    vagueTaskResponse:
+                                                        opt.value as VagueTaskResponse,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -353,18 +441,32 @@ export default function OnboardingPage() {
                         {/* Missing Work Response - Scenario */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
                             <p className="font-medium mb-2">SCENARIO:</p>
-                            <p className="text-gray-700 mb-4">{"A teammate hasn't uploaded their section 24 hours before the deadline. You:"}</p>
+                            <p className="text-gray-700 mb-4">
+                                {
+                                    "A teammate hasn't uploaded their section 24 hours before the deadline. You:"
+                                }
+                            </p>
                             <div className="space-y-3">
                                 {WORK_STYLE_OPTIONS.missingWorkResponse.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="missingWorkResponse"
                                             checked={workStyle.missingWorkResponse === opt.value}
-                                            onChange={() => setWorkStyle((prev) => ({ ...prev, missingWorkResponse: opt.value as MissingWorkResponse }))}
+                                            onChange={() =>
+                                                setWorkStyle((prev) => ({
+                                                    ...prev,
+                                                    missingWorkResponse:
+                                                        opt.value as MissingWorkResponse,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -372,18 +474,30 @@ export default function OnboardingPage() {
 
                         {/* Team Role */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">In past projects, how would previous teammates likely describe your contribution?</p>
+                            <p className="font-medium mb-4">
+                                In past projects, how would previous teammates likely describe your
+                                contribution?
+                            </p>
                             <div className="space-y-3">
                                 {WORK_STYLE_OPTIONS.teamRole.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="teamRole"
                                             checked={workStyle.teamRole === opt.value}
-                                            onChange={() => setWorkStyle((prev) => ({ ...prev, teamRole: opt.value as TeamRole }))}
+                                            onChange={() =>
+                                                setWorkStyle((prev) => ({
+                                                    ...prev,
+                                                    teamRole: opt.value as TeamRole,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -416,18 +530,31 @@ export default function OnboardingPage() {
                     <div className="space-y-8">
                         {/* Response Time */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">{"What is your preferred communication \"Response Time\" for group messages?"}</p>
+                            <p className="font-medium mb-4">
+                                {
+                                    'What is your preferred communication "Response Time" for group messages?'
+                                }
+                            </p>
                             <div className="space-y-3">
                                 {SCHEDULING_OPTIONS.responseTime.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="responseTime"
                                             checked={scheduling.responseTime === opt.value}
-                                            onChange={() => setScheduling((prev) => ({ ...prev, responseTime: opt.value as ResponseTime }))}
+                                            onChange={() =>
+                                                setScheduling((prev) => ({
+                                                    ...prev,
+                                                    responseTime: opt.value as ResponseTime,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -435,18 +562,29 @@ export default function OnboardingPage() {
 
                         {/* Meeting Format */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">Which meeting format do you find most productive?</p>
+                            <p className="font-medium mb-4">
+                                Which meeting format do you find most productive?
+                            </p>
                             <div className="space-y-3">
                                 {SCHEDULING_OPTIONS.meetingFormat.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="meetingFormat"
                                             checked={scheduling.meetingFormat === opt.value}
-                                            onChange={() => setScheduling((prev) => ({ ...prev, meetingFormat: opt.value as MeetingFormat }))}
+                                            onChange={() =>
+                                                setScheduling((prev) => ({
+                                                    ...prev,
+                                                    meetingFormat: opt.value as MeetingFormat,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -454,17 +592,33 @@ export default function OnboardingPage() {
 
                         {/* Schedule Commitments */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">{"Outside of freelancing, how \"Full\" is your plate? (Select all that apply)"}</p>
+                            <p className="font-medium mb-4">
+                                {
+                                    'Outside of freelancing, how "Full" is your plate? (Select all that apply)'
+                                }
+                            </p>
                             <div className="space-y-3">
                                 {SCHEDULING_OPTIONS.commitments.map((opt) => (
-                                    <label key={opt.id} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.id}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="checkbox"
-                                            checked={scheduling.commitments[opt.id as keyof ScheduleCommitments]}
-                                            onChange={() => toggleCommitment(opt.id as keyof ScheduleCommitments)}
+                                            checked={
+                                                scheduling.commitments[
+                                                    opt.id as keyof ScheduleCommitments
+                                                ]
+                                            }
+                                            onChange={() =>
+                                                toggleCommitment(
+                                                    opt.id as keyof ScheduleCommitments,
+                                                )
+                                            }
                                             className="w-5 h-5 accent-black rounded"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -472,14 +626,21 @@ export default function OnboardingPage() {
 
                         {/* Availability Grid */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">Availability Grid: Mark the blocks where you are PREPARED to meet/work:</p>
+                            <p className="font-medium mb-4">
+                                Availability Grid: Mark the blocks where you are PREPARED to
+                                meet/work:
+                            </p>
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
                                         <tr>
-                                            <th className="text-left py-2 pr-4 text-sm text-gray-500">Time</th>
+                                            <th className="text-left py-2 pr-4 text-sm text-gray-500">
+                                                Time
+                                            </th>
                                             {DAYS_OF_WEEK.map((day) => (
-                                                <th key={day} className="py-2 px-2 text-sm font-medium capitalize">
+                                                <th
+                                                    key={day}
+                                                    className="py-2 px-2 text-sm font-medium capitalize">
                                                     {day.slice(0, 3)}
                                                 </th>
                                             ))}
@@ -488,19 +649,54 @@ export default function OnboardingPage() {
                                     <tbody>
                                         {TIME_BLOCKS.map((time) => (
                                             <tr key={time}>
-                                                <td className="py-2 pr-4 text-sm text-gray-600 capitalize">{time}</td>
+                                                <td className="py-2 pr-4 text-sm text-gray-600 capitalize">
+                                                    {time}
+                                                </td>
                                                 {DAYS_OF_WEEK.map((day) => (
-                                                    <td key={`${day}-${time}`} className="py-2 px-2 text-center">
+                                                    <td
+                                                        key={`${day}-${time}`}
+                                                        className="py-2 px-2 text-center">
                                                         <button
-                                                            onClick={() => toggleAvailability(day as keyof AvailabilityGrid, time as "morning" | "afternoon" | "evening")}
+                                                            onClick={() =>
+                                                                toggleAvailability(
+                                                                    day as keyof AvailabilityGrid,
+                                                                    time as
+                                                                        | "morning"
+                                                                        | "afternoon"
+                                                                        | "evening",
+                                                                )
+                                                            }
                                                             className={`w-8 h-8 rounded border-2 transition ${
-                                                                scheduling.availabilityGrid[day as keyof AvailabilityGrid][time as "morning" | "afternoon" | "evening"]
+                                                                scheduling.availabilityGrid[
+                                                                    day as keyof AvailabilityGrid
+                                                                ][
+                                                                    time as
+                                                                        | "morning"
+                                                                        | "afternoon"
+                                                                        | "evening"
+                                                                ]
                                                                     ? "bg-emerald-500 border-emerald-500 text-white"
                                                                     : "border-gray-300 hover:border-emerald-300"
                                                             }`}>
-                                                            {scheduling.availabilityGrid[day as keyof AvailabilityGrid][time as "morning" | "afternoon" | "evening"] && (
-                                                                <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                            {scheduling.availabilityGrid[
+                                                                day as keyof AvailabilityGrid
+                                                            ][
+                                                                time as
+                                                                    | "morning"
+                                                                    | "afternoon"
+                                                                    | "evening"
+                                                            ] && (
+                                                                <svg
+                                                                    className="w-4 h-4 mx-auto"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24">
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={3}
+                                                                        d="M5 13l4 4L19 7"
+                                                                    />
                                                                 </svg>
                                                             )}
                                                         </button>
@@ -515,18 +711,29 @@ export default function OnboardingPage() {
 
                         {/* Flexibility */}
                         <div className="bg-white border rounded-xl p-6 shadow-sm">
-                            <p className="font-medium mb-4">How flexible is your schedule if an emergency meeting is needed?</p>
+                            <p className="font-medium mb-4">
+                                How flexible is your schedule if an emergency meeting is needed?
+                            </p>
                             <div className="space-y-3">
                                 {SCHEDULING_OPTIONS.flexibility.map((opt) => (
-                                    <label key={opt.value} className="flex items-center gap-3 cursor-pointer group">
+                                    <label
+                                        key={opt.value}
+                                        className="flex items-center gap-3 cursor-pointer group">
                                         <input
                                             type="radio"
                                             name="flexibility"
                                             checked={scheduling.flexibility === opt.value}
-                                            onChange={() => setScheduling((prev) => ({ ...prev, flexibility: opt.value as ScheduleFlexibility }))}
+                                            onChange={() =>
+                                                setScheduling((prev) => ({
+                                                    ...prev,
+                                                    flexibility: opt.value as ScheduleFlexibility,
+                                                }))
+                                            }
                                             className="w-5 h-5 accent-black"
                                         />
-                                        <span className="group-hover:text-black transition">{opt.label}</span>
+                                        <span className="group-hover:text-black transition">
+                                            {opt.label}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -546,7 +753,9 @@ export default function OnboardingPage() {
                                     onChange={(e) => setHoursPerWeek(Number(e.target.value))}
                                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
                                 />
-                                <p className="text-center mt-3 text-2xl font-bold">{hoursPerWeek} hours</p>
+                                <p className="text-center mt-3 text-2xl font-bold">
+                                    {hoursPerWeek} hours
+                                </p>
                             </div>
 
                             <div>
@@ -585,7 +794,8 @@ export default function OnboardingPage() {
                     <div className="mb-8">
                         <h2 className="text-2xl font-bold mb-2">Your Skills</h2>
                         <p className="text-gray-600">
-                            Select your skills and rate your proficiency level (1=Beginner, 5=Expert)
+                            Select your skills and rate your proficiency level (1=Beginner,
+                            5=Expert)
                         </p>
                     </div>
 
@@ -621,7 +831,9 @@ export default function OnboardingPage() {
                                             {([1, 2, 3, 4, 5] as const).map((level) => (
                                                 <button
                                                     key={level}
-                                                    onClick={() => updateProficiency(entry.skill, level)}
+                                                    onClick={() =>
+                                                        updateProficiency(entry.skill, level)
+                                                    }
                                                     className={`w-10 h-10 rounded-full border-2 font-semibold transition ${
                                                         entry.proficiency === level
                                                             ? "bg-black text-white border-black"
@@ -653,12 +865,13 @@ export default function OnboardingPage() {
                         <button
                             onClick={handleComplete}
                             disabled={selectedSkills.length === 0}
-                            className="flex-1 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-medium">
+                            className="flex-1 py-3 bg-gradient-to-r from-accent-600 to-primary-600 text-white rounded-lg hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition font-medium">
                             ✓ Complete Setup
                         </button>
                     </div>
                 </div>
             )}
+            </div>
         </div>
     );
 }

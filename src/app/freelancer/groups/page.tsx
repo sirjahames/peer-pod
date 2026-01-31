@@ -37,33 +37,48 @@ export default function GroupsPage() {
     }, [user]);
 
     if (loading) {
-        return <p>Loading groups...</p>;
+        return (
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto">
+                    <div className="h-10 bg-gradient-to-r from-primary-300 to-accent-300 rounded-lg w-48 loading-shimmer mb-8"></div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="card loading-shimmer h-40"></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div>
-            <h1 className="text-3xl font-bold mb-8">Your Groups</h1>
+        <div className="min-h-screen bg-gradient-brand page-container">
+            <div className="max-w-7xl mx-auto">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent mb-8">Your Groups</h1>
 
             {groups.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-gray-600 mb-4">You haven&apos;t joined any groups yet.</p>
+                <div className="card text-center py-16 animate-fadeIn">
+                    <div className="text-5xl mb-4">👥</div>
+                    <p className="text-gray-600 text-lg mb-2">No groups yet</p>
+                    <p className="text-gray-500 mb-6">Start applying to projects and join amazing teams</p>
                     <Link
                         href="/freelancer/discover"
-                        className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition inline-block">
+                        className="btn-primary inline-block">
                         Discover Projects
                     </Link>
                 </div>
             ) : (
-                <div className="grid gap-4 md:grid-cols-2">
-                    {groups.map(({ group, project, status }) => (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                    {groups.map(({ group, project, status }, idx) => (
                         <Link
                             key={group.id}
                             href={`/freelancer/groups/${group.id}`}
-                            className="p-6 border rounded-lg hover:border-black transition">
-                            <div className="flex justify-between items-start mb-2">
-                                <h2 className="text-xl font-semibold">{project.title}</h2>
+                            className="card-interactive group animate-fadeIn"
+                            style={{ animationDelay: `${idx * 0.1}s` }}>
+                            <div className="flex justify-between items-start mb-3">
+                                <h2 className="text-xl font-semibold text-gray-900 group-hover:text-accent-600">{project.title}</h2>
                                 <span
-                                    className={`px-2 py-1 text-xs rounded ${
+                                    className={`px-2 py-1 text-xs rounded-full font-medium ${
                                         status === "ACTIVE"
                                             ? "bg-green-100 text-green-700"
                                             : status === "OPEN"
@@ -73,15 +88,21 @@ export default function GroupsPage() {
                                     {status}
                                 </span>
                             </div>
-                            <p className="text-gray-600 text-sm mb-4">{project.description}</p>
-                            <div className="flex gap-4 text-sm text-gray-600">
-                                <span>{group.members.length} members</span>
-                                <span>Due: {project.dueDate}</span>
+                            <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
+                            <div className="flex gap-4 text-sm text-gray-600 pt-4 border-t border-light/50">
+                                <span className="flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-2a6 6 0 0112 0v2z" />
+                                    </svg>
+                                    {group.members.length} members
+                                </span>
+                                <span className="text-accent-600 font-medium">Due: {project.dueDate}</span>
                             </div>
                         </Link>
                     ))}
                 </div>
             )}
+            </div>
         </div>
     );
 }

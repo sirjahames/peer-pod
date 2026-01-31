@@ -239,25 +239,43 @@ export default function ProjectDetailPage() {
         teamMembers.find((m) => m.user.id === userId)?.user.name || "Unknown";
 
     if (loading) {
-        return <p>Loading...</p>;
+        return (
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto">
+                    <div className="h-10 bg-gradient-to-r from-primary-300 to-accent-300 rounded-lg w-64 loading-shimmer mb-8"></div>
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="card loading-shimmer h-48"></div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (!project) {
-        return <p>Project not found</p>;
+        return (
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto text-center py-12">
+                    <p className="text-gray-600">Project not found</p>
+                </div>
+            </div>
+        );
     }
 
     // Team has been formed - show team management view
     if (existingGroup) {
         return (
-            <div>
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-start mb-8">
                     <div>
                         <div className="flex items-center gap-3 mb-2">
-                            <Link href="/dashboard" className="text-gray-500 hover:text-black">
+                            <Link href="/dashboard" className="text-gray-500 hover:text-accent-600 transition">
                                 ← Back
                             </Link>
                         </div>
-                        <h1 className="text-3xl font-bold">{project.title}</h1>
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">{project.title}</h1>
                         <p className="text-gray-600 mt-1">{project.description}</p>
                     </div>
                     <span
@@ -535,17 +553,19 @@ export default function ProjectDetailPage() {
                         </div>
                     </div>
                 )}
+                </div>
             </div>
         );
     }
 
     // No team yet - show candidate selection view
     return (
-        <div>
+        <div className="min-h-screen bg-gradient-brand page-container">
+            <div className="max-w-7xl mx-auto">
             <div className="flex justify-between items-start mb-8">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <Link href="/dashboard" className="text-gray-500 hover:text-black">
+                        <Link href="/dashboard" className="text-gray-500 hover:text-accent-600 transition">
                             ← Back
                         </Link>
                     </div>
@@ -554,10 +574,10 @@ export default function ProjectDetailPage() {
                             type="text"
                             value={editTitle}
                             onChange={(e) => setEditTitle(e.target.value)}
-                            className="text-3xl font-bold w-full border-b-2 border-black focus:outline-none"
+                            className="text-3xl font-bold w-full border-b-2 border-accent-500 focus:outline-none bg-transparent"
                         />
                     ) : (
-                        <h1 className="text-3xl font-bold">{project.title}</h1>
+                        <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">{project.title}</h1>
                     )}
                     {isEditing ? (
                         <textarea
@@ -1009,6 +1029,7 @@ export default function ProjectDetailPage() {
                     )}
                 </div>
             )}
+            </div>
         </div>
     );
 }

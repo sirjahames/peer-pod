@@ -97,34 +97,52 @@ export default function GroupDetailPage() {
         members.find((m) => m.id === userId)?.name || "Unknown";
 
     if (loading) {
-        return <p>Loading...</p>;
+        return (
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto">
+                    <div className="h-10 bg-gradient-to-r from-primary-300 to-accent-300 rounded-lg w-64 loading-shimmer mb-4"></div>
+                    <div className="h-6 bg-light rounded-lg w-48 loading-shimmer mb-8"></div>
+                    <div className="grid md:grid-cols-3 gap-8">
+                        <div className="md:col-span-2 card loading-shimmer h-64"></div>
+                        <div className="card loading-shimmer h-64"></div>
+                    </div>
+                </div>
+            </div>
+        );
     }
 
     if (!group || !project) {
-        return <p>Group not found</p>;
+        return (
+            <div className="min-h-screen bg-gradient-brand page-container">
+                <div className="max-w-7xl mx-auto text-center py-12">
+                    <p className="text-gray-600">Group not found</p>
+                </div>
+            </div>
+        );
     }
 
     return (
-        <div>
-            <div className="mb-8">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-3xl font-bold">{project.title}</h1>
-                        <p className="text-gray-600 mt-1">{project.description}</p>
+        <div className="min-h-screen bg-gradient-brand page-container">
+            <div className="max-w-7xl mx-auto">
+                <div className="mb-8">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">{project.title}</h1>
+                            <p className="text-gray-600 mt-1">{project.description}</p>
+                        </div>
+                        <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                status === "ACTIVE"
+                                    ? "bg-green-100 text-green-700"
+                                    : status === "OPEN"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-gray-100 text-gray-700"
+                            }`}>
+                            {status}
+                        </span>
                     </div>
-                    <span
-                        className={`px-3 py-1 rounded ${
-                            status === "ACTIVE"
-                                ? "bg-green-100 text-green-700"
-                                : status === "OPEN"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-gray-100 text-gray-700"
-                        }`}>
-                        {status}
-                    </span>
+                    <p className="text-sm text-gray-600 mt-2">Due: {project.dueDate}</p>
                 </div>
-                <p className="text-sm text-gray-600 mt-2">Due: {project.dueDate}</p>
-            </div>
 
             <div className="grid md:grid-cols-3 gap-8">
                 <div className="md:col-span-2">
@@ -262,14 +280,14 @@ export default function GroupDetailPage() {
                         {members.map((member) => {
                             const profile = profiles.get(member.id);
                             return (
-                                <div key={member.id} className="p-4 border rounded-lg">
-                                    <p className="font-medium">{member.name}</p>
+                                <div key={member.id} className="card">
+                                    <p className="font-medium text-gray-900">{member.name}</p>
                                     {profile && (
                                         <div className="flex flex-wrap gap-1 mt-2">
                                             {profile.skills.slice(0, 3).map((s) => (
                                                 <span
                                                     key={s.skill}
-                                                    className="px-2 py-0.5 bg-gray-100 text-xs rounded">
+                                                    className="px-2 py-0.5 bg-accent-100 text-accent-700 text-xs rounded-full">
                                                     {s.skill}
                                                 </span>
                                             ))}
@@ -280,6 +298,7 @@ export default function GroupDetailPage() {
                         })}
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

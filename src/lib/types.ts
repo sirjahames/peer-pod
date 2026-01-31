@@ -9,11 +9,11 @@ export interface User {
 
 // Big Five personality trait mapping
 export interface BigFiveScores {
-    extraversion: number;      // 0-100
-    openness: number;          // 0-100
-    agreeableness: number;     // 0-100
+    extraversion: number; // 0-100
+    openness: number; // 0-100
+    agreeableness: number; // 0-100
     conscientiousness: number; // 0-100
-    neuroticism: number;       // 0-100 (lower = more stable)
+    neuroticism: number; // 0-100 (lower = more stable)
 }
 
 // Section 1: Personality assessment answers (1-5 scale)
@@ -39,11 +39,11 @@ export interface PersonalityAssessment {
 }
 
 // Section 2: Work style preferences
-export type GradeExpectation = 'A' | 'B+' | 'B' | 'passing';
-export type DeadlineStyle = 'early' | 'ontime' | 'lastminute' | 'pressure';
-export type VagueTaskResponse = 'initiative' | 'propose' | 'wait' | 'askInstructor';
-export type MissingWorkResponse = 'doIt' | 'checkIn' | 'wait' | 'alert';
-export type TeamRole = 'leader' | 'workhorse' | 'diplomat' | 'specialist';
+export type GradeExpectation = "A" | "B+" | "B" | "passing";
+export type DeadlineStyle = "early" | "ontime" | "lastminute" | "pressure";
+export type VagueTaskResponse = "initiative" | "propose" | "wait" | "askInstructor";
+export type MissingWorkResponse = "doIt" | "checkIn" | "wait" | "alert";
+export type TeamRole = "leader" | "workhorse" | "diplomat" | "specialist";
 
 export interface WorkStyleAssessment {
     gradeExpectation: GradeExpectation;
@@ -54,9 +54,9 @@ export interface WorkStyleAssessment {
 }
 
 // Section 3: Scheduling and communication
-export type ResponseTime = '1-2hours' | 'sameDay' | '24hours' | 'fewDays';
-export type MeetingFormat = 'inPerson' | 'hybrid' | 'video' | 'async';
-export type ScheduleFlexibility = 'very' | 'somewhat' | 'notAtAll';
+export type ResponseTime = "1-2hours" | "sameDay" | "24hours" | "fewDays";
+export type MeetingFormat = "inPerson" | "hybrid" | "video" | "async";
+export type ScheduleFlexibility = "very" | "somewhat" | "notAtAll";
 
 export interface ScheduleCommitments {
     works20PlusHours: boolean;
@@ -182,34 +182,34 @@ export interface CompatibilityScore {
     totalScore: number;
 }
 export interface QuizResponse {
-  userId: string;
-  completedAt: string;
-  // Section 1: Personality (Big Five scores 1-5 for each question)
-  personalityScores: number[]; // 9 questions
-  // Section 2: Work Style (letter-based answers)
-  gradeExpectation: 'A' | 'B+' | 'B' | 'Pass';
-  internalDeadline: 'Early' | 'OnTime' | 'Late' | 'UnderPressure';
-  ambiguityApproach: 'Initiative' | 'Propose' | 'Wait' | 'AskInstructor';
-  teamResponsiveness: 'Immediate' | 'Friendly' | 'Wait' | 'Alert';
-  contributionStyle: 'Leader' | 'Workhorse' | 'Diplomat' | 'Specialist';
-  // Section 3: Scheduling & Communication
-  responseTime: '1-2hrs' | 'SameDay' | '24hrs' | 'FewDays';
-  meetingFormat: 'InPerson' | 'Hybrid' | 'VideoOnly' | 'Async';
-  scheduleFullness: string[]; // array of commitments
-  availabilityGrid: {
-    [day: string]: {
-      morning: boolean;
-      afternoon: boolean;
-      evening: boolean;
+    userId: string;
+    completedAt: string;
+    // Section 1: Personality (Big Five scores 1-5 for each question)
+    personalityScores: number[]; // 9 questions
+    // Section 2: Work Style (letter-based answers)
+    gradeExpectation: "A" | "B+" | "B" | "Pass";
+    internalDeadline: "Early" | "OnTime" | "Late" | "UnderPressure";
+    ambiguityApproach: "Initiative" | "Propose" | "Wait" | "AskInstructor";
+    teamResponsiveness: "Immediate" | "Friendly" | "Wait" | "Alert";
+    contributionStyle: "Leader" | "Workhorse" | "Diplomat" | "Specialist";
+    // Section 3: Scheduling & Communication
+    responseTime: "1-2hrs" | "SameDay" | "24hrs" | "FewDays";
+    meetingFormat: "InPerson" | "Hybrid" | "VideoOnly" | "Async";
+    scheduleFullness: string[]; // array of commitments
+    availabilityGrid: {
+        [day: string]: {
+            morning: boolean;
+            afternoon: boolean;
+            evening: boolean;
+        };
     };
-  };
-  scheduleFlexibility: 'Very' | 'Somewhat' | 'NotAtAll';
-  // Derived personality profile
-  personalityProfile?: {
-    extraversion: number;
-    agreeableness: number;
-    conscientiousness: number;
-    neuroticism: number;
-    openness: number;
-  };
+    scheduleFlexibility: "Very" | "Somewhat" | "NotAtAll";
+    // Derived personality profile
+    personalityProfile?: {
+        extraversion: number;
+        agreeableness: number;
+        conscientiousness: number;
+        neuroticism: number;
+        openness: number;
+    };
 }

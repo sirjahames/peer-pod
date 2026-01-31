@@ -108,8 +108,9 @@ export default function CreateProjectPage() {
     ];
 
     return (
-        <div className="max-w-3xl">
-            <h1 className="text-3xl font-bold mb-8">Create New Project</h1>
+        <div className="min-h-screen bg-gradient-brand page-container">
+            <div className="max-w-3xl mx-auto">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent mb-8">Create New Project</h1>
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {/* Basic Information Section */}
@@ -459,10 +460,11 @@ export default function CreateProjectPage() {
                 <button
                     type="submit"
                     disabled={loading || requiredSkills.length === 0}
-                    className="w-full py-4 bg-black text-white rounded-xl hover:bg-gray-800 disabled:opacity-50 transition text-lg font-semibold">
+                    className="w-full py-4 bg-gradient-to-r from-accent-600 to-primary-600 text-white rounded-xl hover:shadow-lg disabled:opacity-50 transition text-lg font-semibold">
                     {loading ? "Creating Project..." : "🚀 Create Project"}
                 </button>
             </form>
+            </div>
         </div>
     );
 }

@@ -31,11 +31,13 @@ import type {
 function getSupabaseClient() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
+
     if (!url || !key || url === "your-supabase-url") {
-        throw new Error("Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local");
+        throw new Error(
+            "Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local",
+        );
     }
-    
+
     return createBrowserClient(url, key);
 }
 
@@ -142,7 +144,9 @@ export async function getFreelancerProfile(userId: string): Promise<FreelancerPr
     };
 }
 
-export async function createFreelancerProfile(profile: FreelancerProfile): Promise<FreelancerProfile> {
+export async function createFreelancerProfile(
+    profile: FreelancerProfile,
+): Promise<FreelancerProfile> {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from("freelancer_profiles")
@@ -164,7 +168,7 @@ export async function createFreelancerProfile(profile: FreelancerProfile): Promi
 
 export async function updateFreelancerProfile(
     userId: string,
-    updates: Partial<FreelancerProfile>
+    updates: Partial<FreelancerProfile>,
 ): Promise<FreelancerProfile | null> {
     const supabase = getSupabaseClient();
 
@@ -179,7 +183,10 @@ export async function updateFreelancerProfile(
         dbUpdates.onboarding_complete = updates.onboardingComplete;
     }
 
-    const { error } = await supabase.from("freelancer_profiles").update(dbUpdates).eq("user_id", userId);
+    const { error } = await supabase
+        .from("freelancer_profiles")
+        .update(dbUpdates)
+        .eq("user_id", userId);
 
     if (error) return null;
 
@@ -217,7 +224,7 @@ export async function getOpenProjects(): Promise<Project[]> {
 
 export async function createProject(
     clientId: string,
-    projectData: Omit<Project, "id" | "clientId" | "joinCode" | "createdAt">
+    projectData: Omit<Project, "id" | "clientId" | "joinCode" | "createdAt">,
 ): Promise<Project> {
     const supabase = getSupabaseClient();
     const joinCode = generateJoinCode();
@@ -253,7 +260,10 @@ export async function createProject(
     return mapProjectFromDb(data);
 }
 
-export async function updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
+export async function updateProject(
+    id: string,
+    updates: Partial<Project>,
+): Promise<Project | null> {
     const supabase = getSupabaseClient();
 
     const dbUpdates: Record<string, unknown> = {};
@@ -270,7 +280,8 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
     if (updates.paymentMax !== undefined) dbUpdates.payment_max = updates.paymentMax;
     if (updates.workLocation) dbUpdates.work_location = updates.workLocation;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
-    if (updates.estimatedDuration !== undefined) dbUpdates.estimated_duration = updates.estimatedDuration;
+    if (updates.estimatedDuration !== undefined)
+        dbUpdates.estimated_duration = updates.estimatedDuration;
     if (updates.responsibilities) dbUpdates.responsibilities = updates.responsibilities;
     if (updates.requirements) dbUpdates.requirements = updates.requirements;
     if (updates.benefits) dbUpdates.benefits = updates.benefits;
@@ -318,7 +329,10 @@ function mapProjectFromDb(data: Record<string, unknown>): Project {
 
 export async function getProjectApplications(projectId: string): Promise<Application[]> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from("applications").select("*").eq("project_id", projectId);
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("project_id", projectId);
 
     if (error || !data) return [];
 
@@ -332,7 +346,10 @@ export async function getProjectApplications(projectId: string): Promise<Applica
 
 export async function getFreelancerApplications(freelancerId: string): Promise<Application[]> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from("applications").select("*").eq("freelancer_id", freelancerId);
+    const { data, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("freelancer_id", freelancerId);
 
     if (error || !data) return [];
 
@@ -344,7 +361,10 @@ export async function getFreelancerApplications(freelancerId: string): Promise<A
     }));
 }
 
-export async function applyToProject(freelancerId: string, projectId: string): Promise<Application> {
+export async function applyToProject(
+    freelancerId: string,
+    projectId: string,
+): Promise<Application> {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from("applications")
@@ -395,7 +415,11 @@ export async function getGroup(id: string): Promise<Group | null> {
 
 export async function getProjectGroup(projectId: string): Promise<Group | null> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from("groups").select("*").eq("project_id", projectId).single();
+    const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .eq("project_id", projectId)
+        .single();
 
     if (error || !data) return null;
 
@@ -409,7 +433,10 @@ export async function getProjectGroup(projectId: string): Promise<Group | null> 
 
 export async function getFreelancerGroups(freelancerId: string): Promise<Group[]> {
     const supabase = getSupabaseClient();
-    const { data, error } = await supabase.from("groups").select("*").contains("members", [freelancerId]);
+    const { data, error } = await supabase
+        .from("groups")
+        .select("*")
+        .contains("members", [freelancerId]);
 
     if (error || !data) return [];
 
@@ -534,7 +561,11 @@ export async function getGroupMessages(groupId: string): Promise<ChatMessage[]> 
     }));
 }
 
-export async function sendMessage(groupId: string, userId: string, message: string): Promise<ChatMessage> {
+export async function sendMessage(
+    groupId: string,
+    userId: string,
+    message: string,
+): Promise<ChatMessage> {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from("chat_messages")

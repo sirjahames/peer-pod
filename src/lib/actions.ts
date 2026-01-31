@@ -47,11 +47,11 @@ async function getSessionUserId(): Promise<string | null> {
 async function setSessionUserId(userId: string | null): Promise<void> {
     const cookieStore = await cookies();
     if (userId) {
-        cookieStore.set(SESSION_COOKIE, userId, { 
-            httpOnly: true, 
+        cookieStore.set(SESSION_COOKIE, userId, {
+            httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7 // 1 week
+            maxAge: 60 * 60 * 24 * 7, // 1 week
         });
     } else {
         cookieStore.delete(SESSION_COOKIE);
@@ -65,11 +65,7 @@ export async function login(
     password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email)
-        .single();
+    const { data, error } = await supabase.from("users").select("*").eq("email", email).single();
 
     if (error || !data) {
         return { success: false, error: "User not found" };
@@ -93,7 +89,7 @@ export async function signup(
     role: "client" | "freelancer",
 ): Promise<{ success: boolean; user?: User; error?: string }> {
     const supabase = getSupabase();
-    
+
     // Check if email already exists
     const { data: existing } = await supabase
         .from("users")
@@ -158,11 +154,7 @@ export async function setCurrentUser(userId: string): Promise<void> {
 
 export async function getUser(userId: string): Promise<User | null> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", userId)
-        .single();
+    const { data, error } = await supabase.from("users").select("*").eq("id", userId).single();
 
     if (error || !data) return null;
 
@@ -176,12 +168,9 @@ export async function getUser(userId: string): Promise<User | null> {
 
 export async function getUsers(userIds: string[]): Promise<User[]> {
     if (userIds.length === 0) return [];
-    
+
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .in("id", userIds);
+    const { data, error } = await supabase.from("users").select("*").in("id", userIds);
 
     if (error || !data) return [];
 
@@ -228,19 +217,16 @@ export async function savePersonalityAssessment(userId: string, answers: number[
 
 export async function saveSkills(userId: string, skills: SkillEntry[]): Promise<void> {
     const supabase = getSupabase();
-    await supabase
-        .from("freelancer_profiles")
-        .update({ skills })
-        .eq("user_id", userId);
+    await supabase.from("freelancer_profiles").update({ skills }).eq("user_id", userId);
 }
 
 export async function saveAvailability(userId: string, availability: Availability): Promise<void> {
     const supabase = getSupabase();
     await supabase
         .from("freelancer_profiles")
-        .update({ 
+        .update({
             hours_per_week: availability.hoursPerWeek,
-            timezone: availability.timezone
+            timezone: availability.timezone,
         })
         .eq("user_id", userId);
 }
@@ -250,25 +236,40 @@ export async function saveAvailability(userId: string, availability: Availabilit
  */
 function calculateBigFiveScores(personality: PersonalityAssessment): BigFiveScores {
     const extraversion = Math.round(
-        ((personality.leadership + personality.brainstormer + (6 - personality.listener)) / 3 - 1) * 25
+        ((personality.leadership + personality.brainstormer + (6 - personality.listener)) / 3 - 1) *
+            25,
     );
-    
+
     const openness = Math.round(
-        (((6 - personality.traditionalism) + personality.brainstormer + personality.adaptable) / 3 - 1) * 25
+        ((6 - personality.traditionalism + personality.brainstormer + personality.adaptable) / 3 -
+            1) *
+            25,
     );
-    
+
     const agreeableness = Math.round(
-        ((personality.peacekeeper + personality.listener + (6 - personality.challenger)) / 3 - 1) * 25
+        ((personality.peacekeeper + personality.listener + (6 - personality.challenger)) / 3 - 1) *
+            25,
     );
-    
+
     const conscientiousness = Math.round(
-        ((personality.leadership + personality.traditionalism + personality.calmUnderPressure + personality.challenger) / 4 - 1) * 25
+        ((personality.leadership +
+            personality.traditionalism +
+            personality.calmUnderPressure +
+            personality.challenger) /
+            4 -
+            1) *
+            25,
     );
-    
+
     const neuroticism = Math.round(
-        ((personality.controlNeed + (6 - personality.calmUnderPressure) + (6 - personality.adaptable)) / 3 - 1) * 25
+        ((personality.controlNeed +
+            (6 - personality.calmUnderPressure) +
+            (6 - personality.adaptable)) /
+            3 -
+            1) *
+            25,
     );
-    
+
     return {
         extraversion: Math.max(0, Math.min(100, extraversion)),
         openness: Math.max(0, Math.min(100, openness)),
@@ -287,18 +288,18 @@ export async function saveCompatibilityQuiz(
     workStyle: WorkStyleAssessment,
     scheduling: SchedulingAssessment,
     hoursPerWeek: number,
-    timezone: string
+    timezone: string,
 ): Promise<void> {
     const supabase = getSupabase();
     const bigFiveScores = calculateBigFiveScores(personality);
-    
+
     const quizResult: CompatibilityQuizResult = {
         personality,
         workStyle,
         scheduling,
         bigFiveScores,
     };
-    
+
     const personalityArray = [
         personality.leadership,
         personality.traditionalism,
@@ -310,7 +311,7 @@ export async function saveCompatibilityQuiz(
         personality.controlNeed,
         personality.challenger,
     ];
-    
+
     await supabase
         .from("freelancer_profiles")
         .update({
@@ -335,7 +336,7 @@ export async function completeOnboarding(userId: string): Promise<void> {
  */
 export async function saveQuizResponse(response: QuizResponse): Promise<{ success: boolean }> {
     const supabase = getSupabase();
-    
+
     // Map personality scores (9 questions) to PersonalityAssessment
     const scores = response.personalityScores;
     const personality: PersonalityAssessment = {
@@ -352,37 +353,83 @@ export async function saveQuizResponse(response: QuizResponse): Promise<{ succes
 
     // Compute Big Five personality traits from personality scores
     const bigFiveScores: BigFiveScores = {
-        openness: ((5 - personality.traditionalism) + personality.adaptable) / 2 * 20, // 0-100
-        conscientiousness: (personality.leadership + personality.calmUnderPressure) / 2 * 20,
-        extraversion: ((5 - personality.listener) + personality.brainstormer) / 2 * 20,
-        agreeableness: (personality.peacekeeper + (5 - personality.challenger)) / 2 * 20,
+        openness: ((5 - personality.traditionalism + personality.adaptable) / 2) * 20, // 0-100
+        conscientiousness: ((personality.leadership + personality.calmUnderPressure) / 2) * 20,
+        extraversion: ((5 - personality.listener + personality.brainstormer) / 2) * 20,
+        agreeableness: ((personality.peacekeeper + (5 - personality.challenger)) / 2) * 20,
         neuroticism: personality.controlNeed * 20,
     };
 
     // Map work style
     const workStyle: WorkStyleAssessment = {
-        gradeExpectation: response.gradeExpectation === "Pass" ? "passing" : response.gradeExpectation as "A" | "B+" | "B",
-        deadlineStyle: response.internalDeadline === "Early" ? "early" : 
-                       response.internalDeadline === "OnTime" ? "ontime" :
-                       response.internalDeadline === "Late" ? "lastminute" : "pressure",
-        vagueTaskResponse: response.ambiguityApproach === "Initiative" ? "initiative" :
-                           response.ambiguityApproach === "Propose" ? "propose" :
-                           response.ambiguityApproach === "Wait" ? "wait" : "askInstructor",
-        missingWorkResponse: response.teamResponsiveness === "Immediate" ? "doIt" :
-                             response.teamResponsiveness === "Friendly" ? "checkIn" :
-                             response.teamResponsiveness === "Wait" ? "wait" : "alert",
+        gradeExpectation:
+            response.gradeExpectation === "Pass"
+                ? "passing"
+                : (response.gradeExpectation as "A" | "B+" | "B"),
+        deadlineStyle:
+            response.internalDeadline === "Early"
+                ? "early"
+                : response.internalDeadline === "OnTime"
+                  ? "ontime"
+                  : response.internalDeadline === "Late"
+                    ? "lastminute"
+                    : "pressure",
+        vagueTaskResponse:
+            response.ambiguityApproach === "Initiative"
+                ? "initiative"
+                : response.ambiguityApproach === "Propose"
+                  ? "propose"
+                  : response.ambiguityApproach === "Wait"
+                    ? "wait"
+                    : "askInstructor",
+        missingWorkResponse:
+            response.teamResponsiveness === "Immediate"
+                ? "doIt"
+                : response.teamResponsiveness === "Friendly"
+                  ? "checkIn"
+                  : response.teamResponsiveness === "Wait"
+                    ? "wait"
+                    : "alert",
         teamRole: response.contributionStyle.toLowerCase() as TeamRole,
     };
 
     // Map availability grid - need to lowercase keys
     const availabilityGrid: AvailabilityGrid = {
-        monday: response.availabilityGrid["Monday"] || { morning: false, afternoon: false, evening: false },
-        tuesday: response.availabilityGrid["Tuesday"] || { morning: false, afternoon: false, evening: false },
-        wednesday: response.availabilityGrid["Wednesday"] || { morning: false, afternoon: false, evening: false },
-        thursday: response.availabilityGrid["Thursday"] || { morning: false, afternoon: false, evening: false },
-        friday: response.availabilityGrid["Friday"] || { morning: false, afternoon: false, evening: false },
-        saturday: response.availabilityGrid["Saturday"] || { morning: false, afternoon: false, evening: false },
-        sunday: response.availabilityGrid["Sunday"] || { morning: false, afternoon: false, evening: false },
+        monday: response.availabilityGrid["Monday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        tuesday: response.availabilityGrid["Tuesday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        wednesday: response.availabilityGrid["Wednesday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        thursday: response.availabilityGrid["Thursday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        friday: response.availabilityGrid["Friday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        saturday: response.availabilityGrid["Saturday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
+        sunday: response.availabilityGrid["Sunday"] || {
+            morning: false,
+            afternoon: false,
+            evening: false,
+        },
     };
 
     // Map schedule commitments
@@ -396,16 +443,30 @@ export async function saveQuizResponse(response: QuizResponse): Promise<{ succes
 
     // Map scheduling
     const scheduling: SchedulingAssessment = {
-        responseTime: response.responseTime === "1-2hrs" ? "1-2hours" :
-                      response.responseTime === "SameDay" ? "sameDay" :
-                      response.responseTime === "24hrs" ? "24hours" : "fewDays",
-        meetingFormat: response.meetingFormat === "InPerson" ? "inPerson" :
-                       response.meetingFormat === "Hybrid" ? "hybrid" :
-                       response.meetingFormat === "VideoOnly" ? "video" : "async",
+        responseTime:
+            response.responseTime === "1-2hrs"
+                ? "1-2hours"
+                : response.responseTime === "SameDay"
+                  ? "sameDay"
+                  : response.responseTime === "24hrs"
+                    ? "24hours"
+                    : "fewDays",
+        meetingFormat:
+            response.meetingFormat === "InPerson"
+                ? "inPerson"
+                : response.meetingFormat === "Hybrid"
+                  ? "hybrid"
+                  : response.meetingFormat === "VideoOnly"
+                    ? "video"
+                    : "async",
         commitments,
         availabilityGrid,
-        flexibility: response.scheduleFlexibility === "Very" ? "very" :
-                     response.scheduleFlexibility === "Somewhat" ? "somewhat" : "notAtAll",
+        flexibility:
+            response.scheduleFlexibility === "Very"
+                ? "very"
+                : response.scheduleFlexibility === "Somewhat"
+                  ? "somewhat"
+                  : "notAtAll",
     };
 
     // Calculate hours per week from availability grid
@@ -450,10 +511,7 @@ export async function getProjects(): Promise<Project[]> {
 
 export async function getOpenProjects(): Promise<Project[]> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("is_open", true);
+    const { data, error } = await supabase.from("projects").select("*").eq("is_open", true);
     if (error || !data) return [];
     return data.map(mapProjectFromDb);
 }
@@ -471,10 +529,7 @@ export async function getProject(projectId: string): Promise<Project | null> {
 
 export async function getClientProjects(clientId: string): Promise<Project[]> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .eq("client_id", clientId);
+    const { data, error } = await supabase.from("projects").select("*").eq("client_id", clientId);
     if (error || !data) return [];
     return data.map(mapProjectFromDb);
 }
@@ -572,15 +627,13 @@ export async function updateProject(
     if (updates.paymentMax !== undefined) dbUpdates.payment_max = updates.paymentMax;
     if (updates.workLocation) dbUpdates.work_location = updates.workLocation;
     if (updates.location !== undefined) dbUpdates.location = updates.location;
-    if (updates.estimatedDuration !== undefined) dbUpdates.estimated_duration = updates.estimatedDuration;
+    if (updates.estimatedDuration !== undefined)
+        dbUpdates.estimated_duration = updates.estimatedDuration;
     if (updates.responsibilities) dbUpdates.responsibilities = updates.responsibilities;
     if (updates.requirements) dbUpdates.requirements = updates.requirements;
     if (updates.benefits) dbUpdates.benefits = updates.benefits;
 
-    const { error } = await supabase
-        .from("projects")
-        .update(dbUpdates)
-        .eq("id", projectId);
+    const { error } = await supabase.from("projects").update(dbUpdates).eq("id", projectId);
 
     if (error) return null;
     return getProject(projectId);
@@ -588,10 +641,7 @@ export async function updateProject(
 
 export async function deleteProject(projectId: string): Promise<boolean> {
     const supabase = getSupabase();
-    const { error } = await supabase
-        .from("projects")
-        .delete()
-        .eq("id", projectId);
+    const { error } = await supabase.from("projects").delete().eq("id", projectId);
     return !error;
 }
 
@@ -706,7 +756,7 @@ export async function getProjectCompatibility(
     const profile = await getFreelancerProfile(freelancerId);
     const project = await getProject(projectId);
     if (!profile || !project) return 0;
-    
+
     const { computeProjectCompatibility } = await import("./compatibility");
     return computeProjectCompatibility(profile, project);
 }
@@ -721,25 +771,37 @@ export async function isAICompatibilityEnabled(): Promise<boolean> {
 export async function getProjectsWithCompatibility(
     freelancerId: string,
     useAI: boolean = false,
-): Promise<{ project: Project; compatibility: number; aiReasoning?: string; strengths?: string[]; concerns?: string[] }[]> {
+): Promise<
+    {
+        project: Project;
+        compatibility: number;
+        aiReasoning?: string;
+        strengths?: string[];
+        concerns?: string[];
+    }[]
+> {
     const profile = await getFreelancerProfile(freelancerId);
     if (!profile) return [];
 
     const openProjects = await getOpenProjects();
     const user = await getUser(freelancerId);
     const freelancerName = user?.name || "Freelancer";
-    
+
     // Check if we should use AI
     const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
-    
+
     if (aiEnabled) {
         const { computeProjectCompatibilityAI } = await import("./ai-compatibility");
-        
+
         // Process in parallel but limit concurrency
         const results = await Promise.all(
             openProjects.map(async (project) => {
                 try {
-                    const aiResult = await computeProjectCompatibilityAI(profile, project, freelancerName);
+                    const aiResult = await computeProjectCompatibilityAI(
+                        profile,
+                        project,
+                        freelancerName,
+                    );
                     return {
                         project,
                         compatibility: aiResult.score,
@@ -755,11 +817,11 @@ export async function getProjectsWithCompatibility(
                         compatibility: computeProjectCompatibility(profile, project),
                     };
                 }
-            })
+            }),
         );
         return results;
     }
-    
+
     // Use algorithmic compatibility
     const { computeProjectCompatibility } = await import("./compatibility");
     return openProjects.map((project) => ({
@@ -774,15 +836,11 @@ export async function getRankedCandidates(projectId: string, useAI: boolean = fa
 
     const projectApps = await getProjectApplications(projectId);
     const candidateIds = projectApps.map((a) => a.freelancerId);
-    
+
     // Get all profiles and user info for candidates
-    const profiles = await Promise.all(
-        candidateIds.map((id) => getFreelancerProfile(id))
-    );
-    const users = await Promise.all(
-        candidateIds.map((id) => getUser(id))
-    );
-    
+    const profiles = await Promise.all(candidateIds.map((id) => getFreelancerProfile(id)));
+    const users = await Promise.all(candidateIds.map((id) => getUser(id)));
+
     const profileMap = new Map<string, FreelancerProfile>();
     const nameMap = new Map<string, string>();
     profiles.forEach((p, i) => {
@@ -794,14 +852,10 @@ export async function getRankedCandidates(projectId: string, useAI: boolean = fa
 
     const group = await getProjectGroup(projectId);
     const existingMembers = group?.members || [];
-    
+
     // Get existing member profiles and names
-    const memberProfiles = await Promise.all(
-        existingMembers.map((id) => getFreelancerProfile(id))
-    );
-    const memberUsers = await Promise.all(
-        existingMembers.map((id) => getUser(id))
-    );
+    const memberProfiles = await Promise.all(existingMembers.map((id) => getFreelancerProfile(id)));
+    const memberUsers = await Promise.all(existingMembers.map((id) => getUser(id)));
     const memberProfileMap = new Map<string, FreelancerProfile>();
     const memberNameMap = new Map<string, string>();
     memberProfiles.forEach((p, i) => {
@@ -813,31 +867,31 @@ export async function getRankedCandidates(projectId: string, useAI: boolean = fa
 
     // Check if we should use AI
     const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
-    
+
     if (aiEnabled) {
         try {
             const { rankCandidatesAI } = await import("./ai-compatibility");
-            
+
             // Prepare candidates for AI
             const candidates = candidateIds
-                .filter(id => profileMap.has(id))
-                .map(id => ({
+                .filter((id) => profileMap.has(id))
+                .map((id) => ({
                     profile: profileMap.get(id)!,
                     name: nameMap.get(id) || "Candidate",
                     userId: id,
                 }));
-            
+
             // Prepare existing members for AI
             const existingMemberData = existingMembers
-                .filter(id => memberProfileMap.has(id))
-                .map(id => ({
+                .filter((id) => memberProfileMap.has(id))
+                .map((id) => ({
                     profile: memberProfileMap.get(id)!,
                     name: memberNameMap.get(id) || "Team Member",
                 }));
-            
+
             const aiRankings = await rankCandidatesAI(candidates, project, existingMemberData);
-            
-            return aiRankings.map(r => ({
+
+            return aiRankings.map((r) => ({
                 freelancerId: r.freelancerId,
                 projectScore: r.score,
                 avgMemberScore: r.score, // AI considers both in its score
@@ -852,7 +906,8 @@ export async function getRankedCandidates(projectId: string, useAI: boolean = fa
     }
 
     // Fallback to algorithmic ranking
-    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
+    const { computeProjectCompatibility, computeFreelancerCompatibility } =
+        await import("./compatibility");
 
     const results: {
         freelancerId: string;
@@ -900,13 +955,9 @@ export async function getTeamSuggestions(projectId: string, useAI: boolean = fal
     const candidateIds = projectApps.map((a) => a.freelancerId);
 
     // Get all profiles and user info
-    const profiles = await Promise.all(
-        candidateIds.map((id) => getFreelancerProfile(id))
-    );
-    const users = await Promise.all(
-        candidateIds.map((id) => getUser(id))
-    );
-    
+    const profiles = await Promise.all(candidateIds.map((id) => getFreelancerProfile(id)));
+    const users = await Promise.all(candidateIds.map((id) => getUser(id)));
+
     const profileMap = new Map<string, FreelancerProfile>();
     const nameMap = new Map<string, string>();
     profiles.forEach((p, i) => {
@@ -923,23 +974,23 @@ export async function getTeamSuggestions(projectId: string, useAI: boolean = fal
 
     // Check if we should use AI
     const aiEnabled = useAI && !!process.env.OPENAI_API_KEY;
-    
+
     if (aiEnabled) {
         try {
             const { suggestTeamCombinationsAI } = await import("./ai-compatibility");
-            
+
             // Prepare candidates for AI
             const candidates = candidateIds
-                .filter(id => profileMap.has(id))
-                .map(id => ({
+                .filter((id) => profileMap.has(id))
+                .map((id) => ({
                     profile: profileMap.get(id)!,
                     name: nameMap.get(id) || "Candidate",
                     userId: id,
                 }));
-            
+
             const aiSuggestions = await suggestTeamCombinationsAI(candidates, project, teamSize);
-            
-            return aiSuggestions.map(s => ({
+
+            return aiSuggestions.map((s) => ({
                 members: s.members,
                 avgScore: s.avgScore,
                 aiReasoning: s.reasoning,
@@ -951,7 +1002,8 @@ export async function getTeamSuggestions(projectId: string, useAI: boolean = fal
     }
 
     // Fallback to algorithmic team suggestions
-    const { computeProjectCompatibility, computeFreelancerCompatibility } = await import("./compatibility");
+    const { computeProjectCompatibility, computeFreelancerCompatibility } =
+        await import("./compatibility");
 
     const combinations: { members: string[]; avgScore: number }[] = [];
 
@@ -1010,21 +1062,21 @@ export async function getTeamSuggestions(projectId: string, useAI: boolean = fal
 export async function getTeamInsights(groupId: string) {
     const group = await getGroup(groupId);
     if (!group) return null;
-    
+
     const project = await getProject(group.projectId);
     if (!project) return null;
-    
+
     // Get member profiles and names
-    const profiles = await Promise.all(group.members.map(id => getFreelancerProfile(id)));
-    const users = await Promise.all(group.members.map(id => getUser(id)));
-    
+    const profiles = await Promise.all(group.members.map((id) => getFreelancerProfile(id)));
+    const users = await Promise.all(group.members.map((id) => getUser(id)));
+
     const members = group.members
         .map((id, i) => ({
             profile: profiles[i],
             name: users[i]?.name || "Team Member",
         }))
-        .filter(m => m.profile) as { profile: FreelancerProfile; name: string }[];
-    
+        .filter((m) => m.profile) as { profile: FreelancerProfile; name: string }[];
+
     // Check if AI is enabled
     if (!process.env.OPENAI_API_KEY) {
         return {
@@ -1032,14 +1084,14 @@ export async function getTeamInsights(groupId: string) {
             teamStrengths: ["Team assembled and ready to collaborate"],
             potentialChallenges: ["AI insights not available - add OPENAI_API_KEY to enable"],
             recommendations: ["Hold a kickoff meeting to align on goals"],
-            roleAssignments: members.map(m => ({
+            roleAssignments: members.map((m) => ({
                 name: m.name,
                 suggestedRole: "Team Member",
-                reasoning: "Role to be determined by team"
-            }))
+                reasoning: "Role to be determined by team",
+            })),
         };
     }
-    
+
     try {
         const { getTeamInsightsAI } = await import("./ai-compatibility");
         return await getTeamInsightsAI(members, project);
@@ -1053,11 +1105,7 @@ export async function getTeamInsights(groupId: string) {
 
 export async function getGroup(groupId: string): Promise<Group | null> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("groups")
-        .select("*")
-        .eq("id", groupId)
-        .single();
+    const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).single();
 
     if (error || !data) return null;
 
@@ -1106,7 +1154,7 @@ export async function getFreelancerGroups(freelancerId: string): Promise<Group[]
 
 export async function createGroup(projectId: string, memberIds: string[]): Promise<Group> {
     const supabase = getSupabase();
-    
+
     const { data, error } = await supabase
         .from("groups")
         .insert({
@@ -1120,10 +1168,7 @@ export async function createGroup(projectId: string, memberIds: string[]): Promi
     if (error || !data) throw new Error(error?.message || "Failed to create group");
 
     // Close the project
-    await supabase
-        .from("projects")
-        .update({ is_open: false })
-        .eq("id", projectId);
+    await supabase.from("projects").update({ is_open: false }).eq("id", projectId);
 
     // Generate tasks
     const project = await getProject(projectId);
@@ -1134,7 +1179,7 @@ export async function createGroup(projectId: string, memberIds: string[]): Promi
             project.title,
             project.requiredSkills,
         );
-        
+
         for (const task of generatedTasks) {
             await supabase.from("tasks").insert({
                 group_id: task.groupId,
@@ -1169,10 +1214,7 @@ export async function computeGroupStatus(group: Group, project: Project): Promis
 
 export async function getGroupTasks(groupId: string): Promise<Task[]> {
     const supabase = getSupabase();
-    const { data, error } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("group_id", groupId);
+    const { data, error } = await supabase.from("tasks").select("*").eq("group_id", groupId);
 
     if (error || !data) return [];
 
@@ -1191,15 +1233,12 @@ export async function updateTask(
     updates: Partial<Pick<Task, "completed" | "assignedTo">>,
 ): Promise<void> {
     const supabase = getSupabase();
-    
+
     const dbUpdates: Record<string, unknown> = {};
     if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
     if (updates.assignedTo !== undefined) dbUpdates.assigned_to = updates.assignedTo;
-    
-    await supabase
-        .from("tasks")
-        .update(dbUpdates)
-        .eq("id", taskId);
+
+    await supabase.from("tasks").update(dbUpdates).eq("id", taskId);
 }
 
 // ============ CHAT ============
