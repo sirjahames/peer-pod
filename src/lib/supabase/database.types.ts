@@ -82,7 +82,7 @@ export interface Database {
                         isOneToOne: true;
                         referencedRelation: "users";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
             projects: {
@@ -162,7 +162,7 @@ export interface Database {
                         isOneToOne: false;
                         referencedRelation: "users";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
             groups: {
@@ -194,7 +194,7 @@ export interface Database {
                         isOneToOne: false;
                         referencedRelation: "projects";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
             applications: {
@@ -230,7 +230,7 @@ export interface Database {
                         isOneToOne: false;
                         referencedRelation: "users";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
             tasks: {
@@ -275,7 +275,7 @@ export interface Database {
                         isOneToOne: false;
                         referencedRelation: "users";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
             chat_messages: {
@@ -314,7 +314,7 @@ export interface Database {
                         isOneToOne: false;
                         referencedRelation: "users";
                         referencedColumns: ["id"];
-                    }
+                    },
                 ];
             };
         };

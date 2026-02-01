@@ -20,28 +20,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const supabase = createClient();
 
-    const fetchUserProfile = useCallback(async (authUserId: string): Promise<User | null> => {
-        const { data, error } = await supabase
-            .from("users")
-            .select("*")
-            .eq("id", authUserId)
-            .single();
+    const fetchUserProfile = useCallback(
+        async (authUserId: string): Promise<User | null> => {
+            const { data, error } = await supabase
+                .from("users")
+                .select("*")
+                .eq("id", authUserId)
+                .single();
 
-        if (error || !data) {
-            console.error("Error fetching user profile:", error);
-            return null;
-        }
+            if (error || !data) {
+                console.error("Error fetching user profile:", error);
+                return null;
+            }
 
-        return {
-            id: data.id,
-            email: data.email,
-            name: data.name,
-            role: data.role as "client" | "freelancer",
-        };
-    }, [supabase]);
+            return {
+                id: data.id,
+                email: data.email,
+                name: data.name,
+                role: data.role as "client" | "freelancer",
+            };
+        },
+        [supabase],
+    );
 
     const refreshUser = useCallback(async () => {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const {
+            data: { user: authUser },
+        } = await supabase.auth.getUser();
         if (authUser) {
             const profile = await fetchUserProfile(authUser.id);
             setUser(profile);
@@ -54,7 +59,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Initial session check
         const initializeAuth = async () => {
             try {
-                const { data: { user: authUser } } = await supabase.auth.getUser();
+                const {
+                    data: { user: authUser },
+                } = await supabase.auth.getUser();
                 if (authUser) {
                     const profile = await fetchUserProfile(authUser.id);
                     setUser(profile);
@@ -69,20 +76,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         initializeAuth();
 
         // Listen for auth state changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
-                if (event === "SIGNED_IN" && session?.user) {
-                    const profile = await fetchUserProfile(session.user.id);
-                    setUser(profile);
-                } else if (event === "SIGNED_OUT") {
-                    setUser(null);
-                } else if (event === "TOKEN_REFRESHED" && session?.user) {
-                    const profile = await fetchUserProfile(session.user.id);
-                    setUser(profile);
-                }
-                router.refresh();
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === "SIGNED_IN" && session?.user) {
+                const profile = await fetchUserProfile(session.user.id);
+                setUser(profile);
+            } else if (event === "SIGNED_OUT") {
+                setUser(null);
+            } else if (event === "TOKEN_REFRESHED" && session?.user) {
+                const profile = await fetchUserProfile(session.user.id);
+                setUser(profile);
             }
-        );
+            router.refresh();
+        });
 
         return () => {
             subscription.unsubscribe();

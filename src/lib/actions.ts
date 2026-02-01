@@ -35,7 +35,7 @@ export async function login(
     password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
     const supabase = await createClient();
-    
+
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -95,9 +95,9 @@ export async function signup(
     // Check if session was created (email confirmation disabled = instant session)
     if (!authData.session) {
         // If no session, email confirmation might still be enabled
-        return { 
-            success: false, 
-            error: "Email confirmation is required. Please check your email or disable email confirmation in Supabase Dashboard." 
+        return {
+            success: false,
+            error: "Email confirmation is required. Please check your email or disable email confirmation in Supabase Dashboard.",
         };
     }
 
@@ -119,10 +119,12 @@ export async function logout(): Promise<void> {
 
 export async function getCurrentUser(): Promise<User | null> {
     const supabase = await createClient();
-    
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    const {
+        data: { user: authUser },
+    } = await supabase.auth.getUser();
     if (!authUser) return null;
-    
+
     return getUser(authUser.id);
 }
 
