@@ -15,7 +15,7 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { login } = useAuth();
+  const { refreshUser } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,12 +24,13 @@ export default function SignupPage() {
 
     const result = await signup(email, password, name, role);
 
-    if (result.success && result.user) {
-      login(result.user);
-      if (role === 'client') {
-        router.push('/dashboard');
-      } else {
+    if (result.success) {
+      // Refresh auth state and redirect to appropriate dashboard
+      await refreshUser();
+      if (role === 'freelancer') {
         router.push('/quiz');
+      } else {
+        router.push('/dashboard');
       }
     } else {
       setError(result.error || 'Signup failed');

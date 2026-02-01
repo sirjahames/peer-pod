@@ -91,11 +91,25 @@ peer-pod-v2/
 
 ### 1. User Authentication Flow
 ```
-Login Page → login() action → Supabase query → Set session cookie → Redirect
-                                   │
-                                   ▼
-                            AuthContext updates → UI reflects logged-in state
+Signup Page → signup() action → supabase.auth.signUp() → DB Trigger creates profile
+                                        │
+                                        ▼
+                                Session cookie set → Redirect to dashboard
+                                        │
+                                        ▼
+                                AuthContext.onAuthStateChange → UI updates
+
+Login Page → login() action → supabase.auth.signInWithPassword() → Session cookie
+                                        │
+                                        ▼
+                                Fetch user profile → Redirect to dashboard
 ```
+
+**Security Notes:**
+- Middleware refreshes session on every request
+- Protected routes checked in middleware before page load
+- RLS policies enforce data access at database level
+- Database trigger (SECURITY DEFINER) creates user profiles
 
 ### 2. Compatibility Calculation Flow
 ```
@@ -164,11 +178,12 @@ AuthProvider (root)
 
 ## Session Management
 
-- **Cookie-based sessions** using `peerpod_session` cookie
-- **httpOnly** for security
-- **7-day expiration**
-- **Server-side validation** on each request
-- **No JWT** - simple user ID in cookie
+- **Supabase Auth** with `@supabase/ssr` for cookie-based sessions
+- **Middleware** refreshes session on every request (`src/middleware.ts`)
+- **Auth callback** handles OAuth/email confirmation (`src/app/auth/callback/route.ts`)
+- **AuthContext** uses `onAuthStateChange` for real-time auth state
+- **Protected routes**: `/dashboard`, `/freelancer`, `/quiz`
+- **RLS policies** enforce data access at database level
 
 ## Caching Strategy
 

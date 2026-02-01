@@ -6,11 +6,12 @@ PeerPod is built as a modern full-stack web application using the latest technol
 
 ## Frontend
 
-### Next.js 14.2.21
+### Next.js 16
 - **App Router** - File-based routing with layouts and nested routes
 - **Server Components** - Default server-side rendering
 - **Client Components** - Interactive components with "use client" directive
 - **Server Actions** - Direct database calls from components
+- **Turbopack** - Fast bundler for development and production
 
 ### React 18
 - Hooks-based architecture
@@ -32,14 +33,22 @@ PeerPod is built as a modern full-stack web application using the latest technol
 
 ### Supabase
 - **PostgreSQL Database** - Relational data storage
-- **Row Level Security (RLS)** - Fine-grained access control
+- **Row Level Security (RLS)** - Fine-grained access control at database level
 - **Real-time subscriptions** - Live data updates (ready for implementation)
-- **Authentication ready** - OAuth and email/password support
+- **Supabase Auth** - Secure authentication with `@supabase/ssr`
+  - Password hashing (bcrypt)
+  - Secure HttpOnly session cookies
+  - OAuth support ready
+  - Email confirmation (disabled for dev, enable for production)
+
+### Database Triggers
+- `handle_new_user()` - Creates user profile when auth user signs up
+- Runs with `SECURITY DEFINER` to bypass RLS during signup
 
 ### Server Actions
-- Next.js 14 "use server" directive
+- Next.js 16 "use server" directive
 - Direct database calls without API routes
-- Cookie-based session management
+- Supabase SSR for session management
 - Automatic request/response serialization
 
 ## AI Integration
@@ -79,7 +88,7 @@ PeerPod is built as a modern full-stack web application using the latest technol
 {
   "@supabase/ssr": "^0.8.0",        // Supabase SSR helpers
   "@supabase/supabase-js": "^2.93.3", // Supabase client
-  "next": "14.2.21",                 // Next.js framework
+  "next": "^16.1.6",                 // Next.js framework
   "openai": "^6.17.0",               // OpenAI SDK
   "react": "^18.2.0",                // React library
   "react-dom": "^18.2.0"             // React DOM

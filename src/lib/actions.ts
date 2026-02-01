@@ -1,7 +1,6 @@
 "use server";
 
-import { createBrowserClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "./supabase/server";
 import {
     User,
     FreelancerProfile,
@@ -29,56 +28,41 @@ import {
 } from "./types";
 import { assignTasksToTeam } from "./task-distribution";
 
-// Create Supabase client for server actions
-function getSupabase() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    return createBrowserClient(url, key);
-}
-
-// Session storage using cookies
-const SESSION_COOKIE = "peerpod_session";
-
-async function getSessionUserId(): Promise<string | null> {
-    const cookieStore = await cookies();
-    return cookieStore.get(SESSION_COOKIE)?.value || null;
-}
-
-async function setSessionUserId(userId: string | null): Promise<void> {
-    const cookieStore = await cookies();
-    if (userId) {
-        cookieStore.set(SESSION_COOKIE, userId, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 1 week
-        });
-    } else {
-        cookieStore.delete(SESSION_COOKIE);
-    }
-}
-
 // ============ AUTH ============
 
 export async function login(
     email: string,
     password: string,
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-    const supabase = getSupabase();
-    const { data, error } = await supabase.from("users").select("*").eq("email", email).single();
+    const supabase = await createClient();
+    
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+    });
 
-    if (error || !data) {
-        return { success: false, error: "User not found" };
+    if (authError || !authData.user) {
+        return { success: false, error: authError?.message || "Login failed" };
+    }
+
+    // Fetch user profile
+    const { data: profile, error: profileError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", authData.user.id)
+        .single();
+
+    if (profileError || !profile) {
+        return { success: false, error: "User profile not found" };
     }
 
     const user: User = {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        role: data.role as "client" | "freelancer",
+        id: profile.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role as "client" | "freelancer",
     };
 
-    await setSessionUserId(user.id);
     return { success: true, user };
 }
 
@@ -88,72 +72,64 @@ export async function signup(
     name: string,
     role: "client" | "freelancer",
 ): Promise<{ success: boolean; user?: User; error?: string }> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
 
-    // Check if email already exists
-    const { data: existing } = await supabase
-        .from("users")
-        .select("id")
-        .eq("email", email)
-        .single();
+    // Sign up with Supabase Auth
+    // Email confirmation is DISABLED in Supabase Dashboard for development
+    // The database trigger will automatically create the user profile
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                name,
+                role,
+            },
+        },
+    });
 
-    if (existing) {
-        return { success: false, error: "Email already registered" };
+    if (authError || !authData.user) {
+        return { success: false, error: authError?.message || "Signup failed" };
     }
 
-    // Create user
-    const { data, error } = await supabase
-        .from("users")
-        .insert({ email, name, role })
-        .select()
-        .single();
-
-    if (error || !data) {
-        return { success: false, error: error?.message || "Failed to create user" };
+    // Check if session was created (email confirmation disabled = instant session)
+    if (!authData.session) {
+        // If no session, email confirmation might still be enabled
+        return { 
+            success: false, 
+            error: "Email confirmation is required. Please check your email or disable email confirmation in Supabase Dashboard." 
+        };
     }
 
+    // Return success - the database trigger handles profile creation
     const user: User = {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        role: data.role as "client" | "freelancer",
+        id: authData.user.id,
+        email: email,
+        name: name,
+        role: role,
     };
-
-    await setSessionUserId(user.id);
-
-    // Create freelancer profile if freelancer
-    if (role === "freelancer") {
-        await supabase.from("freelancer_profiles").insert({
-            user_id: user.id,
-            personality: [],
-            skills: [],
-            hours_per_week: 20,
-            timezone: "UTC",
-            onboarding_complete: false,
-        });
-    }
 
     return { success: true, user };
 }
 
 export async function logout(): Promise<void> {
-    await setSessionUserId(null);
+    const supabase = await createClient();
+    await supabase.auth.signOut();
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-    const userId = await getSessionUserId();
-    if (!userId) return null;
-    return getUser(userId);
-}
-
-export async function setCurrentUser(userId: string): Promise<void> {
-    await setSessionUserId(userId);
+    const supabase = await createClient();
+    
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return null;
+    
+    return getUser(authUser.id);
 }
 
 // ============ USERS ============
 
 export async function getUser(userId: string): Promise<User | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("users").select("*").eq("id", userId).single();
 
     if (error || !data) return null;
@@ -169,12 +145,12 @@ export async function getUser(userId: string): Promise<User | null> {
 export async function getUsers(userIds: string[]): Promise<User[]> {
     if (userIds.length === 0) return [];
 
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("users").select("*").in("id", userIds);
 
     if (error || !data) return [];
 
-    return data.map((u) => ({
+    return data.map((u: any) => ({
         id: u.id,
         email: u.email,
         name: u.name,
@@ -185,7 +161,7 @@ export async function getUsers(userIds: string[]): Promise<User[]> {
 // ============ FREELANCER PROFILE ============
 
 export async function getFreelancerProfile(userId: string): Promise<FreelancerProfile | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("freelancer_profiles")
         .select("*")
@@ -208,7 +184,7 @@ export async function getFreelancerProfile(userId: string): Promise<FreelancerPr
 }
 
 export async function savePersonalityAssessment(userId: string, answers: number[]): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     await supabase
         .from("freelancer_profiles")
         .update({ personality: answers })
@@ -216,12 +192,12 @@ export async function savePersonalityAssessment(userId: string, answers: number[
 }
 
 export async function saveSkills(userId: string, skills: SkillEntry[]): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     await supabase.from("freelancer_profiles").update({ skills }).eq("user_id", userId);
 }
 
 export async function saveAvailability(userId: string, availability: Availability): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     await supabase
         .from("freelancer_profiles")
         .update({
@@ -290,7 +266,7 @@ export async function saveCompatibilityQuiz(
     hoursPerWeek: number,
     timezone: string,
 ): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const bigFiveScores = calculateBigFiveScores(personality);
 
     const quizResult: CompatibilityQuizResult = {
@@ -324,7 +300,7 @@ export async function saveCompatibilityQuiz(
 }
 
 export async function completeOnboarding(userId: string): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     await supabase
         .from("freelancer_profiles")
         .update({ onboarding_complete: true })
@@ -335,7 +311,7 @@ export async function completeOnboarding(userId: string): Promise<void> {
  * Save quiz response from the new quiz page format
  */
 export async function saveQuizResponse(response: QuizResponse): Promise<{ success: boolean }> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
 
     // Map personality scores (9 questions) to PersonalityAssessment
     const scores = response.personalityScores;
@@ -503,21 +479,21 @@ export async function saveQuizResponse(response: QuizResponse): Promise<{ succes
 // ============ PROJECTS ============
 
 export async function getProjects(): Promise<Project[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("projects").select("*");
     if (error || !data) return [];
     return data.map(mapProjectFromDb);
 }
 
 export async function getOpenProjects(): Promise<Project[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("projects").select("*").eq("is_open", true);
     if (error || !data) return [];
     return data.map(mapProjectFromDb);
 }
 
 export async function getProject(projectId: string): Promise<Project | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -528,7 +504,7 @@ export async function getProject(projectId: string): Promise<Project | null> {
 }
 
 export async function getClientProjects(clientId: string): Promise<Project[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("projects").select("*").eq("client_id", clientId);
     if (error || !data) return [];
     return data.map(mapProjectFromDb);
@@ -556,7 +532,7 @@ export async function createProject(
         benefits?: string[];
     },
 ): Promise<Project> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const joinCode = generateJoinCode();
 
     const { data, error } = await supabase
@@ -611,7 +587,7 @@ export async function updateProject(
         benefits?: string[];
     }>,
 ): Promise<Project | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
 
     const dbUpdates: Record<string, unknown> = {};
     if (updates.title) dbUpdates.title = updates.title;
@@ -640,7 +616,7 @@ export async function updateProject(
 }
 
 export async function deleteProject(projectId: string): Promise<boolean> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { error } = await supabase.from("projects").delete().eq("id", projectId);
     return !error;
 }
@@ -681,7 +657,7 @@ export async function applyToProject(
     freelancerId: string,
     projectId: string,
 ): Promise<Application> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("applications")
         .insert({
@@ -702,7 +678,7 @@ export async function applyToProject(
 }
 
 export async function getProjectApplications(projectId: string): Promise<Application[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("applications")
         .select("*")
@@ -710,7 +686,7 @@ export async function getProjectApplications(projectId: string): Promise<Applica
 
     if (error || !data) return [];
 
-    return data.map((a) => ({
+    return data.map((a: any) => ({
         id: a.id,
         projectId: a.project_id,
         freelancerId: a.freelancer_id,
@@ -719,7 +695,7 @@ export async function getProjectApplications(projectId: string): Promise<Applica
 }
 
 export async function getFreelancerApplications(freelancerId: string): Promise<Application[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("applications")
         .select("*")
@@ -727,7 +703,7 @@ export async function getFreelancerApplications(freelancerId: string): Promise<A
 
     if (error || !data) return [];
 
-    return data.map((a) => ({
+    return data.map((a: any) => ({
         id: a.id,
         projectId: a.project_id,
         freelancerId: a.freelancer_id,
@@ -736,7 +712,7 @@ export async function getFreelancerApplications(freelancerId: string): Promise<A
 }
 
 export async function hasApplied(freelancerId: string, projectId: string): Promise<boolean> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data } = await supabase
         .from("applications")
         .select("id")
@@ -1104,7 +1080,7 @@ export async function getTeamInsights(groupId: string) {
 // ============ GROUPS ============
 
 export async function getGroup(groupId: string): Promise<Group | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("groups").select("*").eq("id", groupId).single();
 
     if (error || !data) return null;
@@ -1118,7 +1094,7 @@ export async function getGroup(groupId: string): Promise<Group | null> {
 }
 
 export async function getProjectGroup(projectId: string): Promise<Group | null> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("groups")
         .select("*")
@@ -1136,7 +1112,7 @@ export async function getProjectGroup(projectId: string): Promise<Group | null> 
 }
 
 export async function getFreelancerGroups(freelancerId: string): Promise<Group[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("groups")
         .select("*")
@@ -1144,7 +1120,7 @@ export async function getFreelancerGroups(freelancerId: string): Promise<Group[]
 
     if (error || !data) return [];
 
-    return data.map((g) => ({
+    return data.map((g: any) => ({
         id: g.id,
         projectId: g.project_id,
         members: g.members || [],
@@ -1153,7 +1129,7 @@ export async function getFreelancerGroups(freelancerId: string): Promise<Group[]
 }
 
 export async function createGroup(projectId: string, memberIds: string[]): Promise<Group> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
 
     const { data, error } = await supabase
         .from("groups")
@@ -1213,12 +1189,12 @@ export async function computeGroupStatus(group: Group, project: Project): Promis
 // ============ TASKS ============
 
 export async function getGroupTasks(groupId: string): Promise<Task[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("tasks").select("*").eq("group_id", groupId);
 
     if (error || !data) return [];
 
-    return data.map((t) => ({
+    return data.map((t: any) => ({
         id: t.id,
         groupId: t.group_id,
         title: t.title,
@@ -1232,7 +1208,7 @@ export async function updateTask(
     taskId: string,
     updates: Partial<Pick<Task, "completed" | "assignedTo">>,
 ): Promise<void> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
 
     const dbUpdates: Record<string, unknown> = {};
     if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
@@ -1244,7 +1220,7 @@ export async function updateTask(
 // ============ CHAT ============
 
 export async function getGroupMessages(groupId: string): Promise<ChatMessage[]> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("chat_messages")
         .select("*")
@@ -1253,7 +1229,7 @@ export async function getGroupMessages(groupId: string): Promise<ChatMessage[]> 
 
     if (error || !data) return [];
 
-    return data.map((m) => ({
+    return data.map((m: any) => ({
         id: m.id,
         groupId: m.group_id,
         userId: m.user_id,
@@ -1267,7 +1243,7 @@ export async function sendMessage(
     userId: string,
     message: string,
 ): Promise<ChatMessage> {
-    const supabase = getSupabase();
+    const supabase = await createClient();
     const { data, error } = await supabase
         .from("chat_messages")
         .insert({

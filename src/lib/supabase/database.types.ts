@@ -1,6 +1,23 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export interface Database {
+    graphql_public: {
+        Tables: Record<string, never>;
+        Views: Record<string, never>;
+        Functions: {
+            graphql: {
+                Args: {
+                    operationName?: string;
+                    query?: string;
+                    variables?: Json;
+                    extensions?: Json;
+                };
+                Returns: Json;
+            };
+        };
+        Enums: Record<string, never>;
+        CompositeTypes: Record<string, never>;
+    };
     public: {
         Tables: {
             users: {
@@ -8,28 +25,30 @@ export interface Database {
                     id: string;
                     email: string;
                     name: string;
-                    role: "client" | "freelancer";
+                    role: string;
                     created_at: string;
                 };
                 Insert: {
-                    id?: string;
+                    id: string;
                     email: string;
                     name: string;
-                    role: "client" | "freelancer";
+                    role: string;
                     created_at?: string;
                 };
                 Update: {
                     id?: string;
                     email?: string;
                     name?: string;
-                    role?: "client" | "freelancer";
+                    role?: string;
                     created_at?: string;
                 };
+                Relationships: [];
             };
             freelancer_profiles: {
                 Row: {
                     user_id: string;
                     personality: number[];
+                    quiz_result: Json | null;
                     skills: Json;
                     hours_per_week: number;
                     timezone: string;
@@ -38,22 +57,33 @@ export interface Database {
                 };
                 Insert: {
                     user_id: string;
-                    personality: number[];
-                    skills: Json;
-                    hours_per_week: number;
-                    timezone: string;
-                    onboarding_complete?: boolean;
-                    created_at?: string;
-                };
-                Update: {
-                    user_id?: string;
                     personality?: number[];
+                    quiz_result?: Json | null;
                     skills?: Json;
                     hours_per_week?: number;
                     timezone?: string;
                     onboarding_complete?: boolean;
                     created_at?: string;
                 };
+                Update: {
+                    user_id?: string;
+                    personality?: number[];
+                    quiz_result?: Json | null;
+                    skills?: Json;
+                    hours_per_week?: number;
+                    timezone?: string;
+                    onboarding_complete?: boolean;
+                    created_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: "freelancer_profiles_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: true;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             projects: {
                 Row: {
@@ -125,29 +155,47 @@ export interface Database {
                     requirements?: string[] | null;
                     benefits?: string[] | null;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "projects_client_id_fkey";
+                        columns: ["client_id"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             groups: {
                 Row: {
                     id: string;
                     project_id: string;
                     members: string[];
-                    status: "ACTIVE" | "OPEN" | "CLOSED";
+                    status: string;
                     created_at: string;
                 };
                 Insert: {
                     id?: string;
                     project_id: string;
                     members: string[];
-                    status?: "ACTIVE" | "OPEN" | "CLOSED";
+                    status?: string;
                     created_at?: string;
                 };
                 Update: {
                     id?: string;
                     project_id?: string;
                     members?: string[];
-                    status?: "ACTIVE" | "OPEN" | "CLOSED";
+                    status?: string;
                     created_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "groups_project_id_fkey";
+                        columns: ["project_id"];
+                        isOneToOne: false;
+                        referencedRelation: "projects";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             applications: {
                 Row: {
@@ -168,6 +216,22 @@ export interface Database {
                     freelancer_id?: string;
                     applied_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "applications_project_id_fkey";
+                        columns: ["project_id"];
+                        isOneToOne: false;
+                        referencedRelation: "projects";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "applications_freelancer_id_fkey";
+                        columns: ["freelancer_id"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             tasks: {
                 Row: {
@@ -197,6 +261,22 @@ export interface Database {
                     completed?: boolean;
                     created_at?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "tasks_group_id_fkey";
+                        columns: ["group_id"];
+                        isOneToOne: false;
+                        referencedRelation: "groups";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "tasks_assigned_to_fkey";
+                        columns: ["assigned_to"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
             chat_messages: {
                 Row: {
@@ -220,16 +300,27 @@ export interface Database {
                     message?: string;
                     timestamp?: string;
                 };
+                Relationships: [
+                    {
+                        foreignKeyName: "chat_messages_group_id_fkey";
+                        columns: ["group_id"];
+                        isOneToOne: false;
+                        referencedRelation: "groups";
+                        referencedColumns: ["id"];
+                    },
+                    {
+                        foreignKeyName: "chat_messages_user_id_fkey";
+                        columns: ["user_id"];
+                        isOneToOne: false;
+                        referencedRelation: "users";
+                        referencedColumns: ["id"];
+                    }
+                ];
             };
         };
-        Views: {
-            [_ in never]: never;
-        };
-        Functions: {
-            [_ in never]: never;
-        };
-        Enums: {
-            [_ in never]: never;
-        };
+        Views: Record<string, never>;
+        Functions: Record<string, never>;
+        Enums: Record<string, never>;
+        CompositeTypes: Record<string, never>;
     };
 }

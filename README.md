@@ -4,7 +4,7 @@
 
 Form perfectly matched freelance teams based on skills, personality, work style, and compatibility using AI-powered matching.
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green)
 ![OpenAI](https://img.shields.io/badge/OpenAI-GPT--4o--mini-purple)
@@ -19,8 +19,8 @@ Form perfectly matched freelance teams based on skills, personality, work style,
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS
-- **Backend**: Next.js Server Actions, Supabase (PostgreSQL)
+- **Frontend**: Next.js 16 (App Router), React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js Server Actions, Supabase (PostgreSQL + Auth)
 - **AI**: OpenAI GPT-4o-mini for compatibility analysis
 
 ## 🚀 Quick Start

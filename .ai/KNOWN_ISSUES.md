@@ -2,7 +2,23 @@
 
 ## Current Issues
 
-### 1. NaN Compatibility Score Display
+### 1. Middleware Deprecation Warning (Next.js 16)
+**Status:** 🟡 Non-blocking  
+**Severity:** Low  
+**Location:** `src/middleware.ts`
+
+**Description:**
+Next.js 16 shows a warning: "The 'middleware' file convention is deprecated. Please use 'proxy' instead."
+
+**Current Status:**
+The middleware still works but should be migrated to the new "proxy" convention in a future update.
+
+**Documentation:**
+https://nextjs.org/docs/messages/middleware-to-proxy
+
+---
+
+### 2. NaN Compatibility Score Display
 **Status:** 🔴 Open  
 **Severity:** Medium  
 **Location:** Freelancer dashboard, project cards
@@ -65,17 +81,31 @@ User sessions are stored in cookies that expire. If browser is closed and reopen
 
 ---
 
-### 4. No Email Verification
-**Status:** 🟡 Known Limitation  
+### 4. Email Verification Disabled
+**Status:** 🟡 Development Only  
 **Severity:** Medium  
 
 **Description:**
-Users can log in with any name without email verification. This is intentional for hackathon simplicity but should be addressed for production.
+Email verification is disabled for development/hackathon convenience. Users can sign up and immediately access the app without confirming their email.
 
-**For Production:**
-- Implement Supabase Auth
-- Add email verification flow
-- Add password authentication
+**Security Implications:**
+- Users can register with any email (including emails they don't own)
+- No protection against typo'd email addresses
+- Password recovery won't work for mistyped emails
+
+**For Production (REQUIRED):**
+1. Enable email confirmation in Supabase Dashboard:
+   - Go to Authentication → Providers → Email
+   - Enable "Confirm email"
+2. Configure a custom SMTP provider (Resend, SendGrid, etc.)
+3. Update signup flow to show email confirmation UI
+4. Add password reset functionality
+
+**Current Security Measures Still in Place:**
+- Supabase Auth handles password hashing (bcrypt)
+- RLS policies protect data access
+- Session tokens are secure HttpOnly cookies
+- Middleware validates sessions on protected routes
 
 ---
 

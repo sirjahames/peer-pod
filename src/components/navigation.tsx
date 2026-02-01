@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
 export function Navigation() {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const pathname = usePathname();
 
   if (!user) return null;
@@ -62,7 +62,7 @@ export function Navigation() {
               <span className="text-sm font-medium text-gray-700 hidden sm:inline">{user.name}</span>
             </div>
             <button
-              onClick={logout}
+              onClick={signOut}
               className="px-4 py-2 rounded-lg text-sm font-medium text-accent-600 border-2 border-accent-600/20 hover:bg-accent-50 hover:border-accent-600 transform hover:scale-105 active:scale-95 transition-all duration-200"
             >
               Logout
