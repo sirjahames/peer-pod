@@ -96,7 +96,3 @@ See the [.ai/](.ai/) folder for comprehensive documentation:
 Built for the [Caribbean.dev 2026 Hackathon: AI for Good](https://caribbean.dev/2026-hackathon-ai-for-good/)
 
 Teams work collaboratively to design and build technology-driven solutions that address real-world challenges affecting students and communities.
-
-## 📄 License
-
-MIT
